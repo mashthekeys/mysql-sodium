@@ -121,23 +121,21 @@ extern "C" char *sodium_pwhash_str(UDF_INIT *initid, UDF_ARGS *args, char *resul
                                    unsigned long *length, unsigned char *is_null,
                                    char *error)
 {
-    const char      *passwd = args->args[0];
-    size_t           passwd_len = args->lengths[0];
-    long long        memlimit;
-    long long        opslimit;
-    security_level  *ptr;
+    const char         *passwd = args->args[0];
+    size_t              passwd_len = args->lengths[0];
+    size_t              memlimit;
+    unsigned long long  opslimit;
+    security_level     *ptr;
 
     if (initid->ptr != NULL) {
         ptr = (security_level *)(initid->ptr);
 
-        memlimit = (long long)crypto_pwhash_MEMLIMIT_SENSITIVE;//ptr->memlimit;
-        opslimit = (long long)crypto_pwhash_OPSLIMIT_SENSITIVE;//ptr->opslimit;
-//        memlimit = (long long)ptr->memlimit;
-//        opslimit = (long long)ptr->opslimit;
+        memlimit = ptr->memlimit;
+        opslimit = ptr->opslimit;
 
     } else {
-        memlimit = args->args[1] ? *((long long *)args->args[1]) : 0;
-        opslimit = args->args[2] ? *((long long *)args->args[2]) : 0;
+        memlimit = args->args[1] ? *((unsigned long long *)args->args[1]) : 0;
+        opslimit = args->args[2] ? (size_t)*((long long *)args->args[2]) : 0;
     }
 
 
@@ -156,7 +154,7 @@ extern "C" char *sodium_pwhash_str(UDF_INIT *initid, UDF_ARGS *args, char *resul
 
     if (Sodium::crypto_pwhash_str(
             result, passwd, (unsigned long long) passwd_len,
-            (unsigned long long) opslimit, (size_t) memlimit
+            opslimit, memlimit
         ) != 0
     ) {
         *error = 1; // Sodium internal error
