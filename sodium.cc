@@ -8,8 +8,7 @@
 #include <new>
 #include <string>
 
-#include "mysql.h"                      
-#include "mysql/udf_registration_types.h"
+#include "mysql_udf.h"
 
 namespace Sodium {
   #include <sodium.h>
@@ -23,14 +22,14 @@ namespace Sodium {
 
 
 struct security_level {
-    const char         *name;
-    unsigned long long  opslimit;
-    size_t              memlimit;
+    const char               *name;
+    const unsigned long long  opslimit;
+    const size_t              memlimit;
 };
 
-const size_t   HASH_TYPES = 5;
+const size_t            HASH_TYPES = 5;
 
-security_level    HASH_TYPE_LIST[HASH_TYPES] = {
+const security_level    HASH_TYPE_LIST[HASH_TYPES] = {
     {"INTERACTIVE", crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE},
     {"MAX",         crypto_pwhash_OPSLIMIT_MAX,         crypto_pwhash_MEMLIMIT_MAX},
     {"MIN",         crypto_pwhash_OPSLIMIT_MIN,         crypto_pwhash_MEMLIMIT_MIN},
@@ -39,8 +38,10 @@ security_level    HASH_TYPE_LIST[HASH_TYPES] = {
 };
 
 
-
-extern "C" bool sodium_pwhash_str_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+/**@sql sodium_pwhash_str(message, securityLevel) RETURNS STRING */
+/**@sql sodium_pwhash_str(message, memoryLimit, operationLimit) RETURNS STRING */
+MYSQL_STRING_FUNCTION(sodium_pwhash_str,
+{ // init:
     if (Sodium::sodium_init() < 0) {
         strcpy(message, "sodium_pwhash_str initialization error");
         return 1;
@@ -57,7 +58,7 @@ extern "C" bool sodium_pwhash_str_init(UDF_INIT *initid, UDF_ARGS *args, char *m
         }
 
         long long x;
-        security_level *matching_level = NULL;
+        const security_level *matching_level = NULL;
 
         for (x = 0; x < HASH_TYPES; ++x) {
             const char *type = HASH_TYPE_LIST[x].name;
@@ -109,23 +110,13 @@ extern "C" bool sodium_pwhash_str_init(UDF_INIT *initid, UDF_ARGS *args, char *m
     initid->max_length = crypto_pwhash_STRBYTES;
 
     return 0;
-}
-
-
-extern "C" void sodium_pwhash_str_deinit(UDF_INIT *initid) {
-    initid->ptr = NULL;
-}
-
-
-extern "C" char *sodium_pwhash_str(UDF_INIT *initid, UDF_ARGS *args, char *result,
-                                   unsigned long *length, unsigned char *is_null,
-                                   char *error)
-{
-    const char         *passwd = args->args[0];
-    size_t              passwd_len = args->lengths[0];
-    size_t              memlimit;
-    unsigned long long  opslimit;
-    security_level     *ptr;
+},
+{ // main:
+    const char             *passwd = args->args[0];
+    size_t                  passwd_len = args->lengths[0];
+    size_t                  memlimit;
+    unsigned long long      opslimit;
+    const security_level   *ptr;
 
     if (initid->ptr != NULL) {
         ptr = (security_level *)(initid->ptr);
@@ -165,5 +156,730 @@ extern "C" char *sodium_pwhash_str(UDF_INIT *initid, UDF_ARGS *args, char *resul
     *length = (unsigned long)strlen(result);
 
     return result;
+},
+{ // deinit:
+    initid->ptr = NULL;
 }
+)
 
+
+
+/**@sql sodium_auth(VARCHAR message, VARBINARY key) RETURNS STRING */
+MYSQL_INTEGER_FUNCTION(sodium_auth,
+{
+    // init
+    if (args->arg_count != 2) {
+        strcpy(message, "2 arguments required");
+        return 1;
+    }
+    initid->max_length = MYSQL_RETURN_AS_BLOB;
+},
+{
+    // main
+},
+{
+    // deinit
+}
+);
+
+
+/**@sql sodium_auth_verify(VARBINARY mac, VARCHAR message, VARBINARY key) RETURNS INTEGER */
+MYSQL_INTEGER_FUNCTION(sodium_auth_verify,
+{
+    // init
+    if (args->arg_count != 3) {
+        strcpy(message, "3 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    return crypto_auth_verify(...);
+}, {
+    // deinit
+});
+
+
+/**@sql sodium_box(message, nonce, publicKey, secretKey) RETURNS STRING */
+MYSQL_STRING_FUNCTION(sodium_box,
+{
+    // init
+    if (args->arg_count != 4) {
+        strcpy(message, "4 arguments required");
+        return 1;
+    }
+    initid->max_length = MYSQL_RETURN_AS_BLOB;
+}, {
+    // main
+    // TODO wrap crypto_box_easy
+}, {
+    // deinit
+});
+
+
+/**@sql sodium_box_keypair() RETURNS STRING */
+MYSQL_STRING_FUNCTION(sodium_box_keypair,
+{
+    // init
+    if (args->arg_count != 0) {
+        strcpy(message, "0 arguments required");
+        return 1;
+    }
+
+    initid->max_length = MYSQL_RETURN_AS_BLOB;
+}, {
+    // main
+    // TODO wrap crypto_box_keypair(result, result + crypto_box_PUBLICKEYBYTES)
+    *length = crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES;
+    return result;
+}, {
+    // deinit
+});
+
+
+/**@sql sodium_box_open(message, nonce, publicKey, secretKey) RETURNS STRING */
+MYSQL_STRING_FUNCTION(sodium_box_open,
+{
+    // init
+    if (args->arg_count != 4) {
+        strcpy(message, "4 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap crypto_box_open_easy
+}, {
+    // deinit
+});
+
+
+/* sodium_box_publickey(keyPair) RETURNS STRING */
+MYSQL_STRING_FUNCTION(sodium_box_publickey,
+{
+    // init
+    if (args->arg_count != 1) {
+        strcpy(message, "1 argument required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO strcpy(result, this->args[0], crypto_box_PUBLICKEYBYTES)
+}, {
+    // deinit
+});
+
+
+/**@sql sodium_box_seal(message, publicKey) RETURNS STRING */
+MYSQL_STRING_FUNCTION(sodium_box_seal,
+{
+    // init
+    if (args->arg_count != 0) {
+        strcpy(message, "0 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+
+
+/**@sql sodium_box_seal_open(message, publicKey, secretKey) RETURNS STRING */
+MYSQL_STRING_FUNCTION(sodium_box_seal_open,
+{
+    // init
+    if (args->arg_count != 0) {
+        strcpy(message, "0 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+
+
+/* sodium_box_secretkey(keyPair) RETURNS STRING */
+MYSQL_STRING_FUNCTION(sodium_box_secretkey,
+{
+    // init
+    if (args->arg_count != 1) {
+        strcpy(message, "1 argument required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO strcpy(result, this->args[0] + crypto_box_PUBLICKEYBYTES, crypto_box_SECRETKEYBYTES)
+}, {
+    // deinit
+});
+
+
+/* sodium_box_seed_keypair(seed) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_box_seed_keypair,
+{
+    // init
+    if (args->arg_count != 1) {
+        strcpy(message, "1 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+
+
+/* sodium_generichash(length, message, key?) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_generichash,
+{
+    // init
+    if (args->arg_count == 2) {
+        // sodium_generichash(length, message)
+
+    } else if (args->arg_count == 3) {
+        // sodium_generichash(length, message, key)
+
+    } else {
+        strcpy(message, "2 or 3 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap crypto_generichash(length, message, messageLength, key, keyLength)
+}, {
+    // deinit
+});
+
+
+/* sodium_kdf_derive_from_key(length, subkeyID, context, masterKey) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_kdf_derive_from_key,
+{
+    // init
+    if (args->arg_count != 4) {
+        strcpy(message, "4 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    if (contextLength != crypto_kdf_CONTEXTBYTES
+        || masterKeyLength != crypto_kdf_KEYBYTES
+        || crypto_kdf_BYTES_MIN < length
+        || crypto_kdf_BYTES_MAX > length
+    ) {
+        *is_null = 1;
+        return NULL;
+    }
+    // TODO wrap crypto_kdf_derive_from_key(result, length, subkeyID, context, masterKey);
+}, {
+    // deinit
+});
+
+
+/* sodium_kx_client_session_keys(clientPublicKey, clientSecretKey, serverPublicKey) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_kx_client_session_keys,
+{
+    // init
+    if (args->arg_count != 3) {
+        strcpy(message, "3 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+
+
+/* sodium_kx_keypair() RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_kx_keypair,
+{
+    // init
+    if (args->arg_count != 0) {
+        strcpy(message, "0 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap crypto_kx_keypair(result, result + crypto_kx_PUBLICKEYBYTES)
+    *length = crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES;
+}, {
+    // deinit
+});
+
+
+/* sodium_kx_publickey() RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_kx_publickey,
+{
+    // init
+    if (args->arg_count != 0) {
+        strcpy(message, "0 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO implement via strcpy
+}, {
+    // deinit
+});
+
+
+/* sodium_kx_secretkey() RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_kx_secretkey,
+{
+    // init
+    if (args->arg_count != 0) {
+        strcpy(message, "0 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO implement via strcpy
+}, {
+    // deinit
+});
+
+
+/* sodium_kx_seed_keypair(seed) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_kx_seed_keypair,
+{
+    // init
+    if (args->arg_count != 1) {
+        strcpy(message, "1 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+
+
+/* sodium_kx_server_session_keys(serverPublicKey, serverSecretKey, clientPublicKey) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_kx_server_session_keys,
+{
+    // init
+    if (args->arg_count != 0) {
+        strcpy(message, "____ arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+
+
+/* sodium_pwhash(hashLength, password, salt, securityLevel) RETURNS BINARY STRING */
+/* sodium_pwhash(hashLength, password, salt, operationLimit, memoryLimit) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_pwhash,
+{
+    // init
+    if (args->arg_count == 4) {
+
+    } else if (args->arg_count == 5) {
+
+    } else {
+        strcpy(message, "4-5 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+
+
+/* sodium_pwhash_str_needs_rehash(str, securityLevel) RETURNS INTEGER */
+/* sodium_pwhash_str_needs_rehash(str, operationLimit, memoryLimit) RETURNS INTEGER */
+MYSQL_INTEGER_FUNCTION(sodium_pwhash_str_needs_rehash,
+{
+    // init
+    if (args->arg_count == 2) {
+
+    } else if (args->arg_count == 3) {
+
+    } else {
+        strcpy(message, "2-3 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap crypto_pwhash_str_needs_rehash
+}, {
+    // deinit
+});
+
+
+/* sodium_pwhash_str_verify(str, password) RETURNS INTEGER */
+MYSQL_INTEGER_FUNCTION(sodium_pwhash_str_verify,
+{
+    // init
+    if (args->arg_count != 2) {
+        strcpy(message, "2 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    if (strLength != crypto_pwhash_STRBYTES) {
+        *is_null = 1;
+        return -1;
+    }
+    // TODO wrap crypto_pwhash_str_verify
+}, {
+    // deinit
+});
+
+
+/* sodium_secretbox(message, nonce, key) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_secretbox,
+{
+    // init
+    if (args->arg_count != 3) {
+        strcpy(message, "3 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+
+
+/* sodium_secretbox_open(cipher, nonce, key) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_secretbox_open,
+{
+    // init
+    if (args->arg_count != 3) {
+        strcpy(message, "3 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+
+
+/* sodium_sign(message, secretKey) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_sign,
+{
+    // init
+    if (args->arg_count != 2) {
+        strcpy(message, "2 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    *length = messageLength + crypto_sign_BYTES;
+
+    // TODO wrap crypto_sign(result, NULL, message, messageLength, secretKey)
+
+}, {
+    // deinit
+});
+
+
+/* sodium_sign_detached(message, secretKey) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_sign_detached,
+{
+    // init
+    if (args->arg_count != 2) {
+        strcpy(message, "2 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap crypto_sign_detached(result, NULL, message, messageLength, secretKey)
+}, {
+    // deinit
+});
+
+
+/* sodium_sign_keypair() RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_sign_keypair,
+{
+    // init
+    if (args->arg_count != 0) {
+        strcpy(message, "0 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+
+
+/* sodium_sign_open(signedMessage, publicKey) RETURNS INTEGER */
+MYSQL_INTEGER_FUNCTION(sodium_sign_open,
+{
+    // init
+    if (args->arg_count != 2) {
+        strcpy(message, "2 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+
+
+/* sodium_sign_publickey_from_secretkey(secretKey) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_sign_publickey_from_secretkey,
+{
+    // init
+    if (args->arg_count != 1) {
+        strcpy(message, "1 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+
+
+/* sodium_sign_publickey(keyPair) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_sign_publickey,
+{
+    // init
+    if (args->arg_count != 1) {
+        strcpy(message, "1 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+
+
+/* sodium_sign_secretkey(keyPair) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_sign_secretkey,
+{
+    // init
+    if (args->arg_count != 1) {
+        strcpy(message, "1 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+
+
+/* sodium_sign_seed_keypair(seed) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_sign_seed_keypair,
+{
+    // init
+    if (args->arg_count != 1) {
+        strcpy(message, "1 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap crypto_sign_seed_keypair
+}, {
+    // deinit
+});
+
+
+/* sodium_sign_verify_detached(signature, message, publicKey) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_sign_verify_detached,
+{
+    // init
+    if (args->arg_count != 3) {
+        strcpy(message, "3 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap crypto_sign_verify_detached
+}, {
+    // deinit
+});
+
+
+/* sodium_shorthash(string, key) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_shorthash,
+{
+    // init
+    if (args->arg_count != 2) {
+        strcpy(message, "2 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap crypto_shorthash
+}, {
+    // deinit
+});
+
+
+/* _sodium_pad() RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(_sodium_pad,
+{
+    // init
+    if (args->arg_count != 1) {
+        strcpy(message, "1 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap sodium_pad
+}, {
+    // deinit
+});
+
+
+/* _sodium_unpad() RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(_sodium_unpad,
+{
+    // init
+    if (args->arg_count != 1) {
+        strcpy(message, "1 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap sodium_unpad
+}, {
+    // deinit
+});
+
+
+/* sodium_auth_keygen() RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_auth_keygen,
+{
+    // init
+    if (args->arg_count != 0) {
+        strcpy(message, "0 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap crypto_auth_keygen(result)
+}, {
+    // deinit
+});
+
+
+/* sodium_generichash_keygen() RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_generichash_keygen,
+{
+    // init
+    if (args->arg_count != 0) {
+        strcpy(message, "0 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap crypto_auth_keygen(result)
+}, {
+    // deinit
+});
+
+
+/* sodium_kdf_keygen() RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_kdf_keygen,
+{
+    // init
+    if (args->arg_count != 0) {
+        strcpy(message, "0 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap crypto_kdf_keygen(result)
+}, {
+    // deinit
+});
+
+
+/* sodium_secretbox_keygen() RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_secretbox_keygen,
+{
+    // init
+    if (args->arg_count != 0) {
+        strcpy(message, "0 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap crypto_secretbox_keygen(result)
+}, {
+    // deinit
+});
+
+
+/* sodium_shorthash_keygen() RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_shorthash_keygen,
+{
+    // init
+    if (args->arg_count != 0) {
+        strcpy(message, "0 arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+    // TODO wrap crypto_shorthash_keygen(result)
+}, {
+    // deinit
+});
+
+
+/* __UDF__() RETURNS BINARY STRING */
+/*
+MYSQL_STRING_FUNCTION(__UDF__,
+{
+    // init
+    if (args->arg_count != 0) {
+        strcpy(message, "____ arguments required");
+        return 1;
+    }
+
+}, {
+    // main
+}, {
+    // deinit
+});
+*/

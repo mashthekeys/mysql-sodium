@@ -35,29 +35,29 @@ Goal: Provide UDFs for Mysql to implement support for LibSodium.
 
 ### v0.1 - Port core functionality
 
-``sodium_auth_verify`` — Verifies that the tag is valid for the message
-
 ``sodium_auth`` — Compute a tag for the message
 
-``sodium_box_keypair_from_secretkey_and_publickey``
+``sodium_auth_verify`` — Verifies that the tag is valid for the message
+
+``sodium_box`` — Encrypt a message
+
+x ``sodium_box_keypair_from_secretkey_and_publickey``
 
 ``sodium_box_keypair`` — Randomly generate a secret key and a corresponding public key
 
 ``sodium_box_open`` — Verify and decrypt a ciphertext
 
-``sodium_box_publickey_from_secretkey``
-
 ``sodium_box_publickey``
 
-``sodium_box_seal_open`` — Decrypt the ciphertext
+x ``sodium_box_publickey_from_secretkey``
 
 ``sodium_box_seal`` — Encrypt a message
+
+``sodium_box_seal_open`` — Decrypt the ciphertext
 
 ``sodium_box_secretkey``
 
 ``sodium_box_seed_keypair`` — Deterministically derive the key pair from a single key
-
-``sodium_box`` — Encrypt a message
 
 ``sodium_generichash`` — Get a hash of the message
 
@@ -75,19 +75,21 @@ Goal: Provide UDFs for Mysql to implement support for LibSodium.
 
 ``sodium_kx_server_session_keys``
 
+``sodium_pwhash`` — Derive a key from a password
+
 ``sodium_pwhash_str_needs_rehash``
 
 ``sodium_pwhash_str_verify`` — Verifies that a password matches a hash
 
-``sodium_pwhash`` — Derive a key from a password
+``sodium_secretbox`` — Encrypt a message
 
 ``sodium_secretbox_open`` — Verify and decrypt a ciphertext
 
-``sodium_secretbox`` — Encrypt a message
+``sodium_sign`` — Sign a message
 
 ``sodium_sign_detached`` — Sign the message
 
-``sodium_sign_keypair_from_secretkey_and_publickey``
+x ``sodium_sign_keypair_from_secretkey_and_publickey``
 
 ``sodium_sign_keypair`` — Randomly generate a secret key and a corresponding public key
 
@@ -102,8 +104,6 @@ Goal: Provide UDFs for Mysql to implement support for LibSodium.
 ``sodium_sign_seed_keypair`` — Deterministically derive the key pair from a single key
 
 ``sodium_sign_verify_detached`` — Verify signature for the message
-
-``sodium_sign`` — Sign a message
 
 ``sodium_shorthash`` — Compute a fixed-size fingerprint for the message
 
@@ -139,11 +139,11 @@ Goal: Provide UDFs for Mysql to implement support for LibSodium.
 
 ### v0.3 - Support for alternate algorithms
 
-``sodium_pwhash_scryptsalsa208sha256_str_verify`` — Verify that the password is a valid password verification string
+``sodium_pwhash_scryptsalsa208sha256`` — Derives a key from a password
 
 ``sodium_pwhash_scryptsalsa208sha256_str`` — Get an ASCII encoded hash
 
-``sodium_pwhash_scryptsalsa208sha256`` — Derives a key from a password
+``sodium_pwhash_scryptsalsa208sha256_str_verify`` — Verify that the password is a valid password verification string
 
 ``sodium_sign_ed25519_pk_to_curve25519`` — Convert an Ed25519 public key to a Curve25519 public key
 
@@ -193,18 +193,14 @@ Goal: Provide UDFs for Mysql to implement support for LibSodium.
 
 ``sodium_secretstream_xchacha20poly1305_rekey``
 
+``sodium_stream`` — Generate a deterministic sequence of bytes from a seed
+
 ``sodium_stream_keygen`` — Get random bytes for key
 
 ``sodium_stream_xor`` — Encrypt a message
 
-``sodium_stream`` — Generate a deterministic sequence of bytes from a seed
-
 
 ### Utilities (ported only if required)
-
-``sodium_scalarmult_base`` — Alias of sodium_box_publickey_from_secretkey
-
-``sodium_scalarmult`` — Compute a shared secret given a user's secret key and another user's public key
 
 ``sodium_add`` — Add large numbers
 
@@ -223,3 +219,7 @@ Goal: Provide UDFs for Mysql to implement support for LibSodium.
 ``sodium_memcmp`` — Test for equality in constant-time
 
 ``sodium_memzero`` — Overwrite buf with zeros
+
+``sodium_scalarmult`` — Compute a shared secret given a user's secret key and another user's public key
+
+``sodium_scalarmult_base`` — Alias of sodium_box_publickey_from_secretkey
