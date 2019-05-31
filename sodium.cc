@@ -1404,10 +1404,12 @@ MYSQL_STRING_FUNCTION(sodium_auth_keygen,
 {
     // init
     REQUIRE_ARGS(0);
-
+    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    // TODO wrap crypto_auth_keygen(result)
+    result = fixed_buffer(result, crypto_auth_KEYBYTES, initid->ptr);
+    MUST_SUCCEED(crypto_auth_keygen(result));
+    return result;
 }, {
     // deinit
     if (initid->ptr != NULL)  free(initid->ptr);
@@ -1419,10 +1421,12 @@ MYSQL_STRING_FUNCTION(sodium_generichash_keygen,
 {
     // init
     REQUIRE_ARGS(0);
-
+    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    // TODO wrap crypto_auth_keygen(result)
+    result = fixed_buffer(result, crypto_generichash_KEYBYTES, initid->ptr);
+    MUST_SUCCEED(crypto_generichash_keygen(result));
+    return result;
 }, {
     // deinit
     if (initid->ptr != NULL)  free(initid->ptr);
@@ -1434,10 +1438,12 @@ MYSQL_STRING_FUNCTION(sodium_kdf_keygen,
 {
     // init
     REQUIRE_ARGS(0);
-
+    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    // TODO wrap crypto_kdf_keygen(result)
+    result = fixed_buffer(result, crypto_kdf_KEYBYTES, initid->ptr);
+    MUST_SUCCEED(crypto_kdf_keygen(result));
+    return result;
 }, {
     // deinit
     if (initid->ptr != NULL)  free(initid->ptr);
@@ -1449,10 +1455,12 @@ MYSQL_STRING_FUNCTION(sodium_secretbox_keygen,
 {
     // init
     REQUIRE_ARGS(0);
-
+    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    // TODO wrap crypto_secretbox_keygen(result)
+    result = fixed_buffer(result, crypto_secretbox_KEYBYTES, initid->ptr);
+    MUST_SUCCEED(crypto_secretbox_keygen(result));
+    return result;
 }, {
     // deinit
     if (initid->ptr != NULL)  free(initid->ptr);
@@ -1464,10 +1472,12 @@ MYSQL_STRING_FUNCTION(sodium_shorthash_keygen,
 {
     // init
     REQUIRE_ARGS(0);
-
+    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    // TODO wrap crypto_shorthash_keygen(result)
+    result = fixed_buffer(result, crypto_shorthash_KEYBYTES, initid->ptr);
+    MUST_SUCCEED(crypto_shorthash_keygen(result));
+    return result;
 }, {
     // deinit
     if (initid->ptr != NULL)  free(initid->ptr);
