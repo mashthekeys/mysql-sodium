@@ -46,14 +46,14 @@ MYSQL_STRING_FUNCTION(sodium_generichash,
         return MYSQL_NULL;
     }
 
-    result = fixed_buffer(result, hashLength, initid->ptr);
+    result = fixed_buffer(result, hashLength);
 
     MUST_SUCCEED(Sodium::crypto_generichash(hashLength, message, messageLength, key, keyLength));
 
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 

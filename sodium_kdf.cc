@@ -33,12 +33,12 @@ MYSQL_STRING_FUNCTION(sodium_kdf_derive_from_key,
         return MYSQL_NULL;
     }
 
-    result = fixed_buffer(result, keyLength, initid->ptr);
+    result = fixed_buffer(result, keyLength);
     MUST_SUCCEED(Sodium::crypto_kdf_derive_from_key(result, keyLength, subkeyID, context, masterKey));
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 

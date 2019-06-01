@@ -27,7 +27,7 @@ MYSQL_STRING_FUNCTION(_sodium_pad,
 
     size_t                  maxLength = inputLength + MAX_PAD_LENGTH;
 
-    result = dynamic_buffer(result, maxLength, initid->ptr);
+    result = dynamic_buffer(result, maxLength, &(initid->ptr));
 
     strcpy(result, input, inputLength);
 
@@ -42,7 +42,7 @@ MYSQL_STRING_FUNCTION(_sodium_pad,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -67,7 +67,7 @@ MYSQL_STRING_FUNCTION(_sodium_unpad,
         return MYSQL_NULL;
     }
 
-    result = dynamic_buffer(result, inputLength, initid->ptr);
+    result = dynamic_buffer(result, inputLength, &(initid->ptr));
 
     strcpy(result, input, inputLength);
 
@@ -82,6 +82,6 @@ MYSQL_STRING_FUNCTION(_sodium_unpad,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 

@@ -25,14 +25,14 @@ MYSQL_STRING_FUNCTION(sodium_secretbox,
         return MYSQL_NULL;
     }
 
-    result = fixed_buffer(result, messageLength + crypto_secretbox_MACBYTES, initid->ptr);
+    result = fixed_buffer(result, messageLength + crypto_secretbox_MACBYTES);
 
     MUST_SUCCEED(Sodium::crypto_secretbox_easy(result, message, messageLength, nonce, key));
 
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -70,12 +70,12 @@ MYSQL_STRING_FUNCTION(sodium_secretbox_open,
         return MYSQL_NULL;
     }
 
-    result = fixed_buffer(result, cipher + crypto_secretbox_MACBYTES, initid->ptr);
+    result = fixed_buffer(result, cipher + crypto_secretbox_MACBYTES);
 
     MUST_SUCCEED(Sodium::crypto_secretbox_open_easy(result, cipher, cipherLength, nonce, key));
 
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });

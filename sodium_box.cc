@@ -34,14 +34,14 @@ MYSQL_STRING_FUNCTION(sodium_box,
         return MYSQL_NULL;
     }
 
-    result = fixed_buffer(result, messageLength + crypto_box_MACBYTES, initid->ptr);
+    result = fixed_buffer(result, messageLength + crypto_box_MACBYTES);
 
     MUST_SUCCEED(Sodium::crypto_box_easy(result, message, messageLength, nonce, publicKey, secretKey));
 
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -54,14 +54,14 @@ MYSQL_STRING_FUNCTION(sodium_box_keypair,
     initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    result = fixed_buffer(result, crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES, initid->ptr);
+    result = fixed_buffer(result, crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES);
 
     MUST_SUCCEED(Sodium::crypto_box_keypair(result, result + crypto_box_PUBLICKEYBYTES));
 
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -99,7 +99,7 @@ MYSQL_STRING_FUNCTION(sodium_box_open,
         return MYSQL_NULL;
     }
 
-    result = fixed_buffer(result, cipherLength - crypto_box_MACBYTES, initid->ptr);
+    result = fixed_buffer(result, cipherLength - crypto_box_MACBYTES);
 
     if (Sodium::crypto_box_open_easy(result, cipher, cipherLength, nonce, publicKey, secretKey) != SUCCESS) {
         return MYSQL_NULL;
@@ -108,7 +108,7 @@ MYSQL_STRING_FUNCTION(sodium_box_open,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -136,14 +136,14 @@ MYSQL_STRING_FUNCTION(sodium_box_publickey_from_secretkey,
         return MYSQL_NULL;
     }
 
-    result = fixed_buffer(result, crypto_box_PUBLICKEYBYTES, initid->ptr);
+    result = fixed_buffer(result, crypto_box_PUBLICKEYBYTES);
 
     MUST_SUCCEED(Sodium::crypto_scalarmult_base(result, secretKey));
 
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -176,7 +176,7 @@ MYSQL_STRING_FUNCTION(sodium_box_seal,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -215,7 +215,7 @@ MYSQL_STRING_FUNCTION(sodium_box_seal_open,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -243,13 +243,13 @@ MYSQL_STRING_FUNCTION(sodium_box_seed_keypair,
         return MYSQL_NULL;
     }
 
-    result = fixed_buffer(result, crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES, initid->ptr);
+    result = fixed_buffer(result, crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES);
 
     MUST_SUCCEED(Sodium::crypto_box_seed_keypair(result, result + crypto_box_PUBLICKEYBYTES, seed));
 
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 

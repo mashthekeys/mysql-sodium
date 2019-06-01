@@ -22,7 +22,7 @@ MYSQL_STRING_FUNCTION(sodium_auth,
     if (args->lengths[1] != crypto_auth_KEYBYTES) {
         return MYSQL_NULL;
     }
-    result = fixed_buffer(result, crypto_auth_BYTES, initid->ptr);
+    result = fixed_buffer(result, crypto_auth_BYTES);
 
     MUST_SUCCEED(Sodium::crypto_auth(result, message, messageLength, key));
 
@@ -30,7 +30,7 @@ MYSQL_STRING_FUNCTION(sodium_auth,
 },
 {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 }
 );
 

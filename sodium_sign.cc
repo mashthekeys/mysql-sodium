@@ -21,14 +21,14 @@ MYSQL_STRING_FUNCTION(sodium_sign,
         return MYSQL_NULL;
     }
 
-    result = fixed_buffer(result, messageLength + crypto_sign_BYTES, initid->ptr);
+    result = fixed_buffer(result, messageLength + crypto_sign_BYTES);
 
     MUST_SUCCEED(Sodium::crypto_sign(result, NULL, message, messageLength, secretKey));
 
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -51,14 +51,14 @@ MYSQL_STRING_FUNCTION(sodium_sign_detached,
         return MYSQL_NULL;
     }
 
-    result = fixed_buffer(result, crypto_sign_BYTES, initid->ptr);
+    result = fixed_buffer(result, crypto_sign_BYTES);
 
     MUST_SUCCEED(Sodium::crypto_sign_detached(result, NULL, message, messageLength, secretKey));
 
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -70,12 +70,12 @@ MYSQL_STRING_FUNCTION(sodium_sign_keypair,
     initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    result = fixed_buffer(result, crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES, initid->ptr);
+    result = fixed_buffer(result, crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES);
     MUST_SUCCEED(Sodium::crypto_sign_keypair(result, result + crypto_sign_PUBLICKEYBYTES));
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -100,7 +100,7 @@ MYSQL_STRING_FUNCTION(sodium_sign_open,
         return MYSQL_NULL;
     }
 
-    result = dynamic_buffer(result, signedMessageLength, initid->ptr);
+    result = dynamic_buffer(result, signedMessageLength, &(initid->ptr));
 
     unsigned long long messageLength;
 
@@ -113,7 +113,7 @@ MYSQL_STRING_FUNCTION(sodium_sign_open,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -138,14 +138,14 @@ MYSQL_STRING_FUNCTION(sodium_sign_publickey_from_secretkey,
         return MYSQL_NULL;
     }
 
-    result = fixed_buffer(result, crypto_sign_PUBLICKEYBYTES, initid->ptr);
+    result = fixed_buffer(result, crypto_sign_PUBLICKEYBYTES);
 
     MUST_SUCCEED(Sodium::crypto_sign_ed25519_sk_to_pk(result, secretKey));
 
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -169,12 +169,12 @@ MYSQL_STRING_FUNCTION(sodium_sign_seed_keypair,
         return MYSQL_NULL;
     }
 
-    result = fixed_buffer(result, crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES, initid->ptr);
+    result = fixed_buffer(result, crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES);
     MUST_SUCCEED(Sodium::crypto_sign_seed_keypair(result, result + crypto_sign_PUBLICKEYBYTES, seed));
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 

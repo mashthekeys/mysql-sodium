@@ -12,18 +12,17 @@
 #include "sodium_udf.h"
 
 // Used in the macro fixed_buffer
-char *dynamic_buffer(char *preallocated, size_t required, char *alloc_result) {
+char *dynamic_buffer(char *preallocated, size_t required, void **store) {
     if (required < mysql_RESULT_LENGTH)  {
         return preallocated;
     }
 
-    const char* buffer = malloc(required + 1);
+    char* buffer = Sodium::sodium_malloc(required + 1);
 
-    if (alloc_result != NULL) *alloc_result = buffer;
+    if (store != NULL) *store = buffer;
 
     return buffer;
 }
-
 
 #include "sodium_auth.cc"
 #include "sodium_box.cc"

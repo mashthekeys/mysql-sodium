@@ -412,9 +412,9 @@ MYSQL_INTEGER_FUNCTION(sodium_pwhash_str_verify,
     const char             *passwd = args->args[1];
     size_t                  passwdLength = args->lengths[1];
 
-    const int verifySuccess = Sodium::crypto_pwhash_str_verify(hashStrCopy, passwd, passwdLength);
+    const int verifySuccess = crypto_pwhash_str_verify(hashStrCopy, passwd, passwdLength);
 
-    Sodium::sodium_memzero(hashStrCopy, sizeof(hashStrCopy));
+    sodium_memzero(hashStrCopy, sizeof(hashStrCopy));
 
     return verifySuccess;
 }, {

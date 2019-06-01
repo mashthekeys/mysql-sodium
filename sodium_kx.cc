@@ -25,7 +25,7 @@ MYSQL_STRING_FUNCTION(sodium_kx_client_session_keys,
     const char *const clientSecretKey = args->args[1];
     const char *const serverPublicKey = args->args[2];
 
-    result = fixed_buffer(result, crypto_kx_SESSIONKEYBYTES * 2, initid->ptr);
+    result = fixed_buffer(result, crypto_kx_SESSIONKEYBYTES * 2);
 
     MUST_SUCCEED(Sodium::crypto_kx_client_session_keys(
         result, result + crypto_kx_SESSIONKEYBYTES,
@@ -35,7 +35,7 @@ MYSQL_STRING_FUNCTION(sodium_kx_client_session_keys,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -47,12 +47,12 @@ MYSQL_STRING_FUNCTION(sodium_kx_keypair,
     initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    result = fixed_buffer(result, crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES, initid->ptr);
+    result = fixed_buffer(result, crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES);
     MUST_SUCCEED(Sodium::crypto_kx_keypair(result, result + crypto_kx_PUBLICKEYBYTES));
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -85,14 +85,14 @@ MYSQL_STRING_FUNCTION(sodium_kx_seed_keypair,
         return MYSQL_NULL;
     }
 
-    result = fixed_buffer(result, crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES, initid->ptr);
+    result = fixed_buffer(result, crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES);
 
     MUST_SUCCEED(Sodium::crypto_kx_seed_keypair(result, result + crypto_kx_PUBLICKEYBYTES, seed));
 
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
 
@@ -122,7 +122,7 @@ MYSQL_STRING_FUNCTION(sodium_kx_server_session_keys,
     const char *const serverSecretKey = args->args[1];
     const char *const clientPublicKey = args->args[2];
 
-    result = fixed_buffer(result, crypto_kx_SESSIONKEYBYTES + crypto_kx_SESSIONKEYBYTES, initid->ptr);
+    result = fixed_buffer(result, crypto_kx_SESSIONKEYBYTES + crypto_kx_SESSIONKEYBYTES);
 
     MUST_SUCCEED(Sodium::crypto_kx_server_session_keys(
         result, result + crypto_kx_SESSIONKEYBYTES,
@@ -132,6 +132,6 @@ MYSQL_STRING_FUNCTION(sodium_kx_server_session_keys,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
+    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
 });
 
