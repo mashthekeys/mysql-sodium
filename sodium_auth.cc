@@ -30,7 +30,7 @@ MYSQL_STRING_FUNCTION(sodium_auth,
 },
 {
     // deinit
-    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
+    if (initid->ptr != NULL) free_buffer(initid->ptr);
 }
 );
 

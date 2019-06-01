@@ -53,7 +53,7 @@ MYSQL_STRING_FUNCTION(sodium_generichash,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
+    if (initid->ptr != NULL) free_buffer(initid->ptr);
 });
 
 

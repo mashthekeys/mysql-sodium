@@ -42,7 +42,7 @@ MYSQL_STRING_FUNCTION(_sodium_pad,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
+    if (initid->ptr != NULL) free_buffer(initid->ptr);
 });
 
 
@@ -82,6 +82,6 @@ MYSQL_STRING_FUNCTION(_sodium_unpad,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
+    if (initid->ptr != NULL) free_buffer(initid->ptr);
 });
 

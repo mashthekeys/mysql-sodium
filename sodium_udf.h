@@ -9,8 +9,9 @@ namespace Sodium {
 }
 
 // Used in the macro fixed_buffer
-char *dynamic_buffer(char *preallocated, size_t required, void **store) {
+char *dynamic_buffer(char *preallocated, size_t required, void **store);
 
+void free_buffer(char *string);
 
 #define fixed_buffer(preallocated, fixedLength) \
     dynamic_buffer(preallocated, fixedLength, &(initid->ptr)); \

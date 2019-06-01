@@ -41,7 +41,7 @@ MYSQL_STRING_FUNCTION(sodium_box,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
+    if (initid->ptr != NULL) free_buffer(initid->ptr);
 });
 
 
@@ -61,7 +61,7 @@ MYSQL_STRING_FUNCTION(sodium_box_keypair,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
+    if (initid->ptr != NULL) free_buffer(initid->ptr);
 });
 
 
@@ -108,7 +108,7 @@ MYSQL_STRING_FUNCTION(sodium_box_open,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
+    if (initid->ptr != NULL) free_buffer(initid->ptr);
 });
 
 
@@ -143,7 +143,7 @@ MYSQL_STRING_FUNCTION(sodium_box_publickey_from_secretkey,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
+    if (initid->ptr != NULL) free_buffer(initid->ptr);
 });
 
 
@@ -176,7 +176,7 @@ MYSQL_STRING_FUNCTION(sodium_box_seal,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
+    if (initid->ptr != NULL) free_buffer(initid->ptr);
 });
 
 
@@ -215,7 +215,7 @@ MYSQL_STRING_FUNCTION(sodium_box_seal_open,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
+    if (initid->ptr != NULL) free_buffer(initid->ptr);
 });
 
 
@@ -250,6 +250,6 @@ MYSQL_STRING_FUNCTION(sodium_box_seed_keypair,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
+    if (initid->ptr != NULL) free_buffer(initid->ptr);
 });
 

@@ -38,7 +38,7 @@ MYSQL_STRING_FUNCTION(sodium_kdf_derive_from_key,
     return result;
 }, {
     // deinit
-    if (initid->ptr != NULL)  Sodium::sodium_free(initid->ptr);
+    if (initid->ptr != NULL) free_buffer(initid->ptr);
 });
 
 
