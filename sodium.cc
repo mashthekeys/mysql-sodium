@@ -14,12 +14,7 @@ namespace Sodium {
   #include <sodium.h>
 }
 
-#define mysql_RESULT_LENGTH 255
-
-#if crypto_pwhash_STRBYTES >= mysql_RESULT_LENGTH
-    #error "crypto_pwhash_STRBYTES is too large: sodium_pwhash_str_init needs to be rewritten to use malloc"
-#endif
-
+#define MAX_PAD_LENGTH 1024
 
 struct security_level {
     const char               *name;
@@ -141,23 +136,51 @@ MYSQL_STRING_FUNCTION(substr_udf, \
     REQUIRE_ARGS(1); \
     REQUIRE_STRING(0, substr_field); \
     initid->max_length = (substr_max_length); \
-}, {\
-    // main\
-    const char *const substr_field = args->args[0];\
-    if (substr_field == NULL || args->lengths[0] != (total_field_length)) {\
-        return MYSQL_NULL;\
-    }\
-    result = fixed_buffer(result, (substr_length), initid->ptr);\
-    strcpy(result, substr_field + (substr_offset), (substr_length));\
-    return result;\
-}, {\
-    // deinit\
-    if (initid->ptr != NULL)  free(initid->ptr);\
+}, { \
+    // main \
+    const char *const substr_field = args->args[0]; \
+    if (substr_field == NULL || args->lengths[0] != (total_field_length)) { \
+        return MYSQL_NULL; \
+    } \
+//    result = fixed_buffer(result, (substr_length), initid->ptr); \
+//    strcpy(result, substr_field + (substr_offset), (substr_length)); \
+//    return result; \
+    *length = (size_t)(substr_length); \
+    return substr_field + (substr_offset); \
+}, { \
+    // deinit \
+    if (initid->ptr != NULL)  free(initid->ptr); \
 })
 
+#define BUFFER_GENERATOR_FUNCTION(buffer_udf, generator_function, buffer_length, _max_length) \
+MYSQL_STRING_FUNCTION(buffer_udf, \
+{ \
+    // init \
+    REQUIRE_ARGS(0); \
+    initid->max_length = _max_length; \
+}, { \
+    // main \
+    result = fixed_buffer(result, buffer_length, initid->ptr); \
+    MUST_SUCCEED(generator_function(result)); \
+    return result; \
+}, { \
+    // deinit \
+    if (initid->ptr != NULL)  free(initid->ptr); \
+});
 
-/**@FUNCTION sodium_pwhash_str(message, securityLevel) RETURNS STRING */
-/**@FUNCTION sodium_pwhash_str(message, memoryLimit, operationLimit) RETURNS STRING */
+
+
+#if crypto_pwhash_STRBYTES >= mysql_RESULT_LENGTH
+    #error "crypto_pwhash_STRBYTES is too large"
+#endif
+
+/** sodium_pwhash_str(message, memoryLimit, operationLimit) RETURNS BINARY STRING
+ *
+ *  sodium_pwhash_str(message, securityLevel) RETURNS BINARY STRING
+ *      securityLevel must be 'INTERACTIVE', 'MODERATE', 'SENSITIVE', 'MAX', or 'MIN'
+ *
+ * @CREATE FUNCTION sodium_pwhash_str() RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_pwhash_str,
 { // init:
     REQUIRE_STRING(0, password);
@@ -897,6 +920,56 @@ MYSQL_STRING_FUNCTION(sodium_pwhash,
 });
 
 
+/* sodium_pwhash_memlimit(securityLevel) RETURNS INTEGER */
+MYSQL_INTEGER_FUNCTION(sodium_pwhash_memlimit,
+{
+    // init
+    REQUIRE_CONST_STRING(0);
+
+    initid->ptr = pwhash_security_preset(args->args[0]);
+
+    initid->maybe_null = 1;
+
+}, {
+    // main
+    const security_level* ptr = (const security_level*)(initid->ptr);
+
+    if (ptr == NULL) {
+        return MYSQL_NULL;
+    }
+    return ptr->memlimit;
+}, {
+    // deinit
+    initid->ptr = NULL;
+}
+}
+
+
+/* sodium_pwhash_opslimit(securityLevel) RETURNS INTEGER */
+MYSQL_INTEGER_FUNCTION(sodium_pwhash_opslimit,
+{
+    // init
+    REQUIRE_CONST_STRING(0);
+
+    initid->ptr = pwhash_security_preset(args->args[0]);
+
+    initid->maybe_null = 1;
+
+}, {
+    // main
+    const security_level* ptr = (const security_level*)(initid->ptr);
+
+    if (ptr == NULL) {
+        return MYSQL_NULL;
+    }
+    return ptr->opslimit;
+}, {
+    // deinit
+    initid->ptr = NULL;
+}
+}
+
+
 /* sodium_pwhash_str_needs_rehash(hashStr, securityLevel) RETURNS INTEGER */
 /* sodium_pwhash_str_needs_rehash(hashStr, operationLimit, memoryLimit) RETURNS INTEGER */
 MYSQL_INTEGER_FUNCTION(sodium_pwhash_str_needs_rehash,
@@ -1315,7 +1388,6 @@ MYSQL_STRING_FUNCTION(sodium_shorthash,
 });
 
 
-#define MAX_PAD_LENGTH 1024
 
 /* _sodium_pad(input) RETURNS BINARY STRING */
 MYSQL_STRING_FUNCTION(_sodium_pad,
@@ -1400,101 +1472,45 @@ MYSQL_STRING_FUNCTION(_sodium_unpad,
 
 
 /* sodium_auth_keygen() RETURNS BINARY STRING */
-MYSQL_STRING_FUNCTION(sodium_auth_keygen,
-{
-    // init
-    REQUIRE_ARGS(0);
-    initid->max_length = MYSQL_BINARY_STRING;
-}, {
-    // main
-    result = fixed_buffer(result, crypto_auth_KEYBYTES, initid->ptr);
-    MUST_SUCCEED(crypto_auth_keygen(result));
-    return result;
-}, {
-    // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
-});
+BUFFER_GENERATOR_FUNCTION(
+    sodium_auth_keygen,
+    crypto_auth_keygen,
+    crypto_auth_KEYBYTES,
+    MYSQL_BINARY_STRING
+);
 
 
 /* sodium_generichash_keygen() RETURNS BINARY STRING */
-MYSQL_STRING_FUNCTION(sodium_generichash_keygen,
-{
-    // init
-    REQUIRE_ARGS(0);
-    initid->max_length = MYSQL_BINARY_STRING;
-}, {
-    // main
-    result = fixed_buffer(result, crypto_generichash_KEYBYTES, initid->ptr);
-    MUST_SUCCEED(crypto_generichash_keygen(result));
-    return result;
-}, {
-    // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
-});
+BUFFER_GENERATOR_FUNCTION(
+    sodium_generichash_keygen,
+    crypto_generichash_keygen,
+    crypto_generichash_KEYBYTES,
+    MYSQL_BINARY_STRING
+);
 
 
 /* sodium_kdf_keygen() RETURNS BINARY STRING */
-MYSQL_STRING_FUNCTION(sodium_kdf_keygen,
-{
-    // init
-    REQUIRE_ARGS(0);
-    initid->max_length = MYSQL_BINARY_STRING;
-}, {
-    // main
-    result = fixed_buffer(result, crypto_kdf_KEYBYTES, initid->ptr);
-    MUST_SUCCEED(crypto_kdf_keygen(result));
-    return result;
-}, {
-    // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
-});
+BUFFER_GENERATOR_FUNCTION(
+    sodium_kdf_keygen,
+    crypto_kdf_keygen,
+    crypto_kdf_KEYBYTES,
+    MYSQL_BINARY_STRING
+);
 
 
 /* sodium_secretbox_keygen() RETURNS BINARY STRING */
-MYSQL_STRING_FUNCTION(sodium_secretbox_keygen,
-{
-    // init
-    REQUIRE_ARGS(0);
-    initid->max_length = MYSQL_BINARY_STRING;
-}, {
-    // main
-    result = fixed_buffer(result, crypto_secretbox_KEYBYTES, initid->ptr);
-    MUST_SUCCEED(crypto_secretbox_keygen(result));
-    return result;
-}, {
-    // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
-});
+BUFFER_GENERATOR_FUNCTION(
+    sodium_secretbox_keygen,
+    crypto_secretbox_keygen,
+    crypto_secretbox_KEYBYTES,
+    MYSQL_BINARY_STRING
+);
 
 
 /* sodium_shorthash_keygen() RETURNS BINARY STRING */
-MYSQL_STRING_FUNCTION(sodium_shorthash_keygen,
-{
-    // init
-    REQUIRE_ARGS(0);
-    initid->max_length = MYSQL_BINARY_STRING;
-}, {
-    // main
-    result = fixed_buffer(result, crypto_shorthash_KEYBYTES, initid->ptr);
-    MUST_SUCCEED(crypto_shorthash_keygen(result));
-    return result;
-}, {
-    // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
-});
-
-
-/* __UDF__() RETURNS BINARY STRING */
-/*
-MYSQL_STRING_FUNCTION(__UDF__,
-{
-    // init
-    REQUIRE_ARGS(0);
-
-}, {
-    // main
-}, {
-    // deinit
-    if (initid->ptr != NULL)  free(initid->ptr);
-});
-*/
+BUFFER_GENERATOR_FUNCTION(
+    sodium_shorthash_keygen,
+    crypto_shorthash_keygen,
+    crypto_shorthash_KEYBYTES,
+    MYSQL_BINARY_STRING
+);
