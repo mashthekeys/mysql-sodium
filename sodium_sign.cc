@@ -122,6 +122,33 @@ MYSQL_STRING_FUNCTION(sodium_sign_open,
 SUBSTRING_FUNCTION(sodium_sign_publickey, keyPair, MYSQL_BINARY_STRING, 0, crypto_sign_PUBLICKEYBYTES, crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES);
 
 
+/* sodium_sign_publickey_from_secretkey(secretKey) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_sign_publickey_from_secretkey,
+{
+    // init
+    REQUIRE_ARGS(1);
+    REQUIRE_STRING(0, secretKey);
+    initid->max_length = MYSQL_BINARY_STRING;
+}, {
+    // main
+    const char *secretKey = args->args[0];
+    size_t      secretKeyLength = args->lengths[0];
+
+    if (secretKeyLength != crypto_sign_SECRETKEYBYTES) {
+        return MYSQL_NULL;
+    }
+
+    result = fixed_buffer(result, crypto_sign_PUBLICKEYBYTES, initid->ptr);
+
+    MUST_SUCCEED(Sodium::crypto_sign_ed25519_sk_to_pk(result, secretKey));
+
+    return result;
+}, {
+    // deinit
+    if (initid->ptr != NULL)  free(initid->ptr);
+});
+
+
 /* sodium_sign_secretkey(keyPair) RETURNS BINARY STRING */
 SUBSTRING_FUNCTION(sodium_sign_secretkey, keyPair, MYSQL_BINARY_STRING, crypto_sign_PUBLICKEYBYTES, crypto_sign_SECRETKEYBYTES, crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES);
 

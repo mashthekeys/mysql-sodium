@@ -120,6 +120,33 @@ SUBSTRING_FUNCTION(sodium_box_publickey,
 );
 
 
+/* sodium_box_publickey_from_secretkey(secretKey) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_box_publickey_from_secretkey,
+{
+    // init
+    REQUIRE_ARGS(1);
+    REQUIRE_STRING(0, secretKey);
+    initid->max_length = MYSQL_BINARY_STRING;
+}, {
+    // main
+    const char *secretKey = args->args[0];
+    size_t      secretKeyLength = args->lengths[0];
+
+    if (secretKeyLength != crypto_box_SECRETKEYBYTES) {
+        return MYSQL_NULL;
+    }
+
+    result = fixed_buffer(result, crypto_box_PUBLICKEYBYTES, initid->ptr);
+
+    MUST_SUCCEED(Sodium::crypto_scalarmult_base(result, secretKey));
+
+    return result;
+}, {
+    // deinit
+    if (initid->ptr != NULL)  free(initid->ptr);
+});
+
+
 /** sodium_box_seal(message, publicKey) RETURNS STRING */
 MYSQL_STRING_FUNCTION(sodium_box_seal,
 {
