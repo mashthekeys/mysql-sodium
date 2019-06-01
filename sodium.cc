@@ -17,6 +17,10 @@ char *dynamic_buffer(char *preallocated, size_t required, void **store) {
         return preallocated;
     }
 
+    if (store != NULL && *store != NULL) {
+        Sodium::sodium_free(*store);
+    }
+
     char* buffer = Sodium::sodium_malloc(required + 1);
 
     if (store != NULL) *store = buffer;
