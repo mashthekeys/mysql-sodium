@@ -11,14 +11,22 @@
 
 #include "sodium_udf.h"
 
-struct Buffer {
+#ifndef __PACKED__
+# if defined(__INTEL_COMPILER) || defined(_MSC_VER)
+#  define __PACKED__ __declspec(align(1))
+# else
+#  define __PACKED__ __attribute__ ((__packed__))
+# endif
+#endif
+
+struct __PACKED__ Buffer {
     /** Maximum length available in this buffer, including the final, reserved, null byte. */
     size_t  length;
     /** Each buffer is over-allocated such that string is really char[length]. */
     char    string[1];
 };
 
-#define ALLOC_FOR_BUFFER(capacity)  (sizeof(size_t) + capacity)
+#define ALLOC_FOR_BUFFER(capacity)  (sizeof(Buffer) + capacity)
 
 #define SIZEOF_BUFFER(B)            (sizeof(size_t) + B->length)
 
@@ -71,3 +79,6 @@ void free_buffer(char *string) {
 #include "sodium_secretbox.cc"
 #include "sodium_sign.cc"
 
+#ifndef MYSQL_SODIUM_NO_AGGREGATE
+#include "group_hash.cc"
+#endif

@@ -19,7 +19,7 @@ MYSQL_STRING_FUNCTION(sodium_generichash,
         default: {
             strcpy(message, "2 or 3 arguments required");
             return 1;
-    }
+        }
     }
 
     initid->max_length = MYSQL_BINARY_STRING;

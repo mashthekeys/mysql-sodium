@@ -48,7 +48,6 @@ extern "C" void UDFName##_deinit(UDF_INIT *initid)\
 deinitFunctionBody ;
 
 
-//define MYSQL_NULL(zero) (*is_null = 1, zero)
 #define return_MYSQL_NULL(zero) { *is_null = 1; return zero; }
 
 
