@@ -5,8 +5,8 @@
 #endif
 
 struct GenericHashProps {
-    unsigned char                       isReady;
     size_t                              hashLength;
+    size_t                              isReady;
 };
 
 struct CRYPTO_ALIGN(64) GenericHashWorkArea {
@@ -15,9 +15,9 @@ struct CRYPTO_ALIGN(64) GenericHashWorkArea {
 };
 
 
-GenericHashWorkArea *newWorkArea(size_t length)
-{
+GenericHashWorkArea *newWorkArea(size_t length) {
     GenericHashWorkArea* workArea = (GenericHashWorkArea*) Sodium::sodium_malloc(sizeof(GenericHashWorkArea));
+    Sodium::sodium_memzero(workArea, sizeof(GenericHashWorkArea));
     workArea->props.hashLength = length;
     return workArea;
 }
@@ -32,9 +32,6 @@ void zeroWorkArea(GenericHashWorkArea *workArea) {
 
 #define WORK_AREA_PTR   ((GenericHashWorkArea*)(initid->ptr))
 
-#define NEW_STATE       ((crypto_generichash_state*)Sodium::sodium_malloc(Sodium::crypto_generichash_statebytes()))
-
-#define STATE_PTR       ((crypto_generichash_state*)(initid->ptr))
 
 bool group_generichash_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     switch (args->arg_count) {
@@ -90,11 +87,8 @@ void group_generichash_add(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char
             if (args->arg_count > 2) {
                 // group_generichash(hashLength?, message, key)
                 // key is read at the start of each window, allowing each hash to have a different key
-                const char     *key;
-                size_t          keyLength;
-
-                key = args->args[2];
-                keyLength = args->lengths[2];
+                const char     *key = args->args[2];
+                size_t          keyLength = args->lengths[2];
 
                 if ((keyLength < crypto_generichash_KEYBYTES_MIN)
                     || (keyLength > crypto_generichash_KEYBYTES_MAX)
@@ -127,7 +121,13 @@ void group_generichash_add(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char
     }
 }
 /**
- * FUNCTION group_generichash(hashLength?, message, key?)
+ * AGGREGATE FUNCTION GROUP_GENERICHASH(hashLength?, message, key?) RETURN BINARY STRING
+ *      hashLength must be NULL or a constant INTEGER.
+ *          If it is NULL, the default value is 32 (from crypto_generichash_BYTES)
+ *
+ *      message can be any length.  Each group of messages outputs one hash.  If any message is NULL, the hash is NULL.
+ *
+ *      key is optional, but if supplied it MUST NOT be empty or NULL.
  */
 char *group_generichash(UDF_INIT *initid, UDF_ARGS *args,
           char *result, unsigned long *length,
