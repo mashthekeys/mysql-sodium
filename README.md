@@ -35,95 +35,95 @@ Goal: Provide UDFs for Mysql to implement support for LibSodium.
 
 ### v0.1 - Port core functionality
 
-``sodium_auth`` — Compute a tag for the message
+✔︎ ``sodium_auth`` — Compute a tag for the message
 
-``sodium_auth_verify`` — Verifies that the tag is valid for the message
+✔︎ ``sodium_auth_verify`` — Verifies that the tag is valid for the message
 
-``sodium_box`` — Encrypt a message
+✔︎ ``sodium_box`` — Encrypt a message
 
-x ``sodium_box_keypair_from_secretkey_and_publickey``
+✔︎ ``sodium_box_keypair_from_secretkey_and_publickey``
 
-``sodium_box_keypair`` — Randomly generate a secret key and a corresponding public key
+✔︎ ``sodium_box_keypair`` — Randomly generate a secret key and a corresponding public key
 
-``sodium_box_open`` — Verify and decrypt a ciphertext
+✔︎ ``sodium_box_open`` — Verify and decrypt a ciphertext
 
-``sodium_box_publickey``
+✔︎ ``sodium_box_publickey``
 
-x ``sodium_box_publickey_from_secretkey``
+✔︎ ``sodium_box_publickey_from_secretkey``
 
-``sodium_box_seal`` — Encrypt a message
+✔︎ ``sodium_box_seal`` — Encrypt a message
 
-``sodium_box_seal_open`` — Decrypt the ciphertext
+✔︎ ``sodium_box_seal_open`` — Decrypt the ciphertext
 
-``sodium_box_secretkey``
+✔︎ ``sodium_box_secretkey``
 
-``sodium_box_seed_keypair`` — Deterministically derive the key pair from a single key
+✔︎ ``sodium_box_seed_keypair`` — Deterministically derive the key pair from a single key
 
-``sodium_generichash`` — Get a hash of the message
+✔︎ ``sodium_generichash`` — Get a hash of the message
 
-``sodium_kdf_derive_from_key`` — Derive a subkey
+✔︎ ``sodium_kdf_derive_from_key`` — Derive a subkey
 
-``sodium_kx_client_session_keys``
+✔︎ ``sodium_kx_client_session_keys``
 
-``sodium_kx_keypair`` — Creates a new sodium keypair
+✔︎ ``sodium_kx_keypair`` — Creates a new sodium keypair
 
-``sodium_kx_publickey``
+✔︎ ``sodium_kx_publickey``
 
-``sodium_kx_secretkey``
+✔︎ ``sodium_kx_secretkey``
 
-``sodium_kx_seed_keypair``
+✔︎ ``sodium_kx_seed_keypair``
 
-``sodium_kx_server_session_keys``
+✔︎ ``sodium_kx_server_session_keys``
 
-``sodium_pwhash`` — Derive a key from a password
+✔︎ ``sodium_pwhash`` — Derive a key from a password
 
-``sodium_pwhash_str_needs_rehash``
+✔︎ ``sodium_pwhash_str_needs_rehash``
 
-``sodium_pwhash_str_verify`` — Verifies that a password matches a hash
+✔︎ ``sodium_pwhash_str_verify`` — Verifies that a password matches a hash
 
-``sodium_secretbox`` — Encrypt a message
+✔︎ ``sodium_secretbox`` — Encrypt a message
 
-``sodium_secretbox_open`` — Verify and decrypt a ciphertext
+✔︎ ``sodium_secretbox_open`` — Verify and decrypt a ciphertext
 
-``sodium_sign`` — Sign a message
+✔︎ ``sodium_sign`` — Sign a message
 
-``sodium_sign_detached`` — Sign the message
+✔︎ ``sodium_sign_detached`` — Sign the message
 
-x ``sodium_sign_keypair_from_secretkey_and_publickey``
+✔︎ ``sodium_sign_keypair_from_secretkey_and_publickey``
 
-``sodium_sign_keypair`` — Randomly generate a secret key and a corresponding public key
+✔︎ ``sodium_sign_keypair`` — Randomly generate a secret key and a corresponding public key
 
-``sodium_sign_open`` — Check that the signed message has a valid signature
+✔︎ ``sodium_sign_open`` — Check that the signed message has a valid signature
 
-``sodium_sign_publickey_from_secretkey`` — Extract the public key from the secret key
+✔︎ ``sodium_sign_publickey_from_secretkey`` — Extract the public key from the secret key
 
-``sodium_sign_publickey``
+✔︎ ``sodium_sign_publickey``
 
-``sodium_sign_secretkey``
+✔︎ ``sodium_sign_secretkey``
 
-``sodium_sign_seed_keypair`` — Deterministically derive the key pair from a single key
+✔︎ ``sodium_sign_seed_keypair`` — Deterministically derive the key pair from a single key
 
-``sodium_sign_verify_detached`` — Verify signature for the message
+✔︎ ``sodium_sign_verify_detached`` — Verify signature for the message
 
-``sodium_shorthash`` — Compute a fixed-size fingerprint for the message
+✔︎ ``sodium_shorthash`` — Compute a fixed-size fingerprint for the message
 
-``_sodium_pad`` — Add padding data
+✔︎ ``_sodium_pad`` — Add padding data
 
-``_sodium_unpad`` — Remove padding data
+✔︎ ``_sodium_unpad`` — Remove padding data
 
 
 
 ### v0.1 - Port keygen utilities
 
-``sodium_auth_keygen`` — Get random bytes for key
+✔︎ ``sodium_auth_keygen`` — Get random bytes for key
 
-``sodium_generichash_keygen`` — Get random bytes for key
+✔︎ ``sodium_generichash_keygen`` — Get random bytes for key
 
-``sodium_kdf_keygen`` — Get random bytes for key
+✔︎ ``sodium_kdf_keygen`` — Get random bytes for key
 
-``sodium_secretbox_keygen`` — Get random bytes for key
+✔︎ ``sodium_secretbox_keygen`` — Get random bytes for key
 
-``sodium_shorthash_keygen`` — Get random bytes for key
+✔︎ ``sodium_shorthash_keygen`` — Get random bytes for key
 
 
 
