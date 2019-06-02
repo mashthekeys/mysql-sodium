@@ -16,27 +16,31 @@ MYSQL_STRING_FUNCTION(sodium_box,
     const char *const message = args->args[0];
     size_t messageLength = args->lengths[0];
     if (message == NULL) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     const char *const nonce = args->args[1];
     if (args->lengths[1] != crypto_box_NONCEBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     const char *const publicKey = args->args[2];
     if (args->lengths[2] != crypto_box_PUBLICKEYBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     const char *const secretKey = args->args[3];
     if (args->lengths[3] != crypto_box_SECRETKEYBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     result = fixed_buffer(result, messageLength + crypto_box_MACBYTES);
 
-    MUST_SUCCEED(Sodium::crypto_box_easy(result, message, messageLength, nonce, publicKey, secretKey));
+    MUST_SUCCEED(Sodium::crypto_box_easy(
+        (unsigned char*)result,
+        (unsigned char*)message, messageLength,
+        (unsigned char*)nonce, (unsigned char*)publicKey, (unsigned char*)secretKey
+    ));
 
     return result;
 }, {
@@ -56,7 +60,10 @@ MYSQL_STRING_FUNCTION(sodium_box_keypair,
     // main
     result = fixed_buffer(result, crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES);
 
-    MUST_SUCCEED(Sodium::crypto_box_keypair(result, result + crypto_box_PUBLICKEYBYTES));
+    MUST_SUCCEED(Sodium::crypto_box_keypair(
+        (unsigned char*)result,
+        (unsigned char*)result + crypto_box_PUBLICKEYBYTES
+    ));
 
     return result;
 }, {
@@ -81,28 +88,32 @@ MYSQL_STRING_FUNCTION(sodium_box_open,
     const char *const cipher = args->args[0];
     size_t cipherLength = args->lengths[0];
     if (cipher == NULL) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     const char *const nonce = args->args[1];
     if (args->lengths[1] != crypto_box_NONCEBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     const char *const publicKey = args->args[2];
     if (args->lengths[2] != crypto_box_PUBLICKEYBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     const char *const secretKey = args->args[3];
     if (args->lengths[3] != crypto_box_SECRETKEYBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     result = fixed_buffer(result, cipherLength - crypto_box_MACBYTES);
 
-    if (Sodium::crypto_box_open_easy(result, cipher, cipherLength, nonce, publicKey, secretKey) != SUCCESS) {
-        return MYSQL_NULL;
+    if (Sodium::crypto_box_open_easy(
+            (unsigned char*)result, (unsigned char*)cipher, cipherLength,
+            (unsigned char*)nonce, (unsigned char*)publicKey, (unsigned char*)secretKey
+        ) != SUCCESS
+    ) {
+        return_MYSQL_NULL(NULL);
     }
 
     return result;
@@ -133,12 +144,12 @@ MYSQL_STRING_FUNCTION(sodium_box_publickey_from_secretkey,
     size_t      secretKeyLength = args->lengths[0];
 
     if (secretKeyLength != crypto_box_SECRETKEYBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     result = fixed_buffer(result, crypto_box_PUBLICKEYBYTES);
 
-    MUST_SUCCEED(Sodium::crypto_scalarmult_base(result, secretKey));
+    MUST_SUCCEED(Sodium::crypto_scalarmult_base((unsigned char*)result, (unsigned char*)secretKey));
 
     return result;
 }, {
@@ -161,17 +172,21 @@ MYSQL_STRING_FUNCTION(sodium_box_seal,
     const char *const message = args->args[0];
     size_t messageLength = args->lengths[0];
     if (message == NULL) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     const char *const publicKey = args->args[1];
     if (args->lengths[1] != crypto_box_PUBLICKEYBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
-    result = fixed_buffer(messageLength + crypto_box_SEALBYTES);
+    result = fixed_buffer(result, messageLength + crypto_box_SEALBYTES);
 
-    MUST_SUCCEED(Sodium::crypto_box_seal(result, message, messageLength, publicKey));
+    MUST_SUCCEED(Sodium::crypto_box_seal(
+        (unsigned char*)result,
+        (unsigned char*)message, messageLength,
+        (unsigned char*)publicKey
+    ));
 
     return result;
 }, {
@@ -195,22 +210,27 @@ MYSQL_STRING_FUNCTION(sodium_box_seal_open,
     const char *const cipher = args->args[0];
     size_t cipherLength = args->lengths[0];
     if (cipher == NULL) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     const char *const publicKey = args->args[1];
     if (args->lengths[1] != crypto_box_PUBLICKEYBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     const char *const secretKey = args->args[2];
     if (args->lengths[2] != crypto_box_SECRETKEYBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
-    result = fixed_buffer(cipherLength - crypto_box_SEALBYTES);
+    result = fixed_buffer(result, cipherLength - crypto_box_SEALBYTES);
 
-    MUST_SUCCEED(Sodium::crypto_box_seal_open(result, cipher, cipherLength, publicKey, secretKey));
+    MUST_SUCCEED(Sodium::crypto_box_seal_open(
+        (unsigned char*)result,
+        (unsigned char*)cipher, cipherLength,
+        (unsigned char*)publicKey,
+        (unsigned char*)secretKey)
+    );
 
     return result;
 }, {
@@ -238,14 +258,18 @@ MYSQL_STRING_FUNCTION(sodium_box_seed_keypair,
     initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    const char *const seed = args->args[0];
+    char *const seed = args->args[0];
     if (args->lengths[0] != crypto_box_SEEDBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     result = fixed_buffer(result, crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES);
 
-    MUST_SUCCEED(Sodium::crypto_box_seed_keypair(result, result + crypto_box_PUBLICKEYBYTES, seed));
+    MUST_SUCCEED(Sodium::crypto_box_seed_keypair(
+        (unsigned char*)result,
+        (unsigned char*)result + crypto_box_PUBLICKEYBYTES,
+        (unsigned char*)seed
+    ));
 
     return result;
 }, {

@@ -19,7 +19,7 @@ MYSQL_STRING_FUNCTION(sodium_kx_client_session_keys,
         || clientSecretKeyLength != crypto_kx_SECRETKEYBYTES
         || serverPublicKeyLength != crypto_kx_PUBLICKEYBYTES
     ) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
     const char *const clientPublicKey = args->args[0];
     const char *const clientSecretKey = args->args[1];
@@ -28,8 +28,8 @@ MYSQL_STRING_FUNCTION(sodium_kx_client_session_keys,
     result = fixed_buffer(result, crypto_kx_SESSIONKEYBYTES * 2);
 
     MUST_SUCCEED(Sodium::crypto_kx_client_session_keys(
-        result, result + crypto_kx_SESSIONKEYBYTES,
-        clientPublicKey, clientSecretKey, serverPublicKey
+        (unsigned char*)result, (unsigned char*)result + crypto_kx_SESSIONKEYBYTES,
+        (unsigned char*)clientPublicKey, (unsigned char*)clientSecretKey, (unsigned char*)serverPublicKey
     ));
 
     return result;
@@ -48,7 +48,10 @@ MYSQL_STRING_FUNCTION(sodium_kx_keypair,
 }, {
     // main
     result = fixed_buffer(result, crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES);
-    MUST_SUCCEED(Sodium::crypto_kx_keypair(result, result + crypto_kx_PUBLICKEYBYTES));
+    MUST_SUCCEED(Sodium::crypto_kx_keypair(
+        (unsigned char*)result,
+        (unsigned char*)result + crypto_kx_PUBLICKEYBYTES
+    ));
     return result;
 }, {
     // deinit
@@ -82,12 +85,16 @@ MYSQL_STRING_FUNCTION(sodium_kx_seed_keypair,
     // main
     const char *const seed = args->args[0];
     if (args->lengths[0] != crypto_kx_SEEDBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     result = fixed_buffer(result, crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES);
 
-    MUST_SUCCEED(Sodium::crypto_kx_seed_keypair(result, result + crypto_kx_PUBLICKEYBYTES, seed));
+    MUST_SUCCEED(Sodium::crypto_kx_seed_keypair(
+        (unsigned char*)result,
+        (unsigned char*)result + crypto_kx_PUBLICKEYBYTES,
+        (unsigned char*)seed
+    ));
 
     return result;
 }, {
@@ -115,7 +122,7 @@ MYSQL_STRING_FUNCTION(sodium_kx_server_session_keys,
         || serverSecretKeyLength != crypto_kx_SECRETKEYBYTES
         || serverPublicKeyLength != crypto_kx_PUBLICKEYBYTES
     ) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     const char *const serverPublicKey = args->args[0];
@@ -125,8 +132,8 @@ MYSQL_STRING_FUNCTION(sodium_kx_server_session_keys,
     result = fixed_buffer(result, crypto_kx_SESSIONKEYBYTES + crypto_kx_SESSIONKEYBYTES);
 
     MUST_SUCCEED(Sodium::crypto_kx_server_session_keys(
-        result, result + crypto_kx_SESSIONKEYBYTES,
-        serverPublicKey, serverSecretKey, clientPublicKey
+        (unsigned char*)result, (unsigned char*)result + crypto_kx_SESSIONKEYBYTES,
+        (unsigned char*)serverPublicKey, (unsigned char*)serverSecretKey, (unsigned char*)clientPublicKey
     ));
 
     return result;

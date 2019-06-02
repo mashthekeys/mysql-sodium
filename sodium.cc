@@ -15,8 +15,8 @@ struct Buffer {
     /** Maximum length available in this buffer, including the final, reserved, null byte. */
     size_t  length;
     /** Each buffer is over-allocated such that string is really char[length]. */
-    char[1] string;
-}
+    char    string[1];
+};
 
 #define ALLOC_FOR_BUFFER(capacity)  (sizeof(size_t) + capacity)
 
@@ -24,7 +24,7 @@ struct Buffer {
 
 
 // Used in the macro fixed_buffer
-char *dynamic_buffer(char *preallocated, size_t required, void **store) {
+char *dynamic_buffer(char *preallocated, size_t required, char **store) {
     Buffer *buffer;
 
     if (required < mysql_RESULT_LENGTH)  {
@@ -36,7 +36,7 @@ char *dynamic_buffer(char *preallocated, size_t required, void **store) {
 
         if (required < buffer->length) {
             Sodium::sodium_memzero(buffer->string, buffer->length);
-            return &(buffer->string);
+            return buffer->string;
         }
 
         Sodium::sodium_memzero(buffer, SIZEOF_BUFFER(buffer));
@@ -46,18 +46,18 @@ char *dynamic_buffer(char *preallocated, size_t required, void **store) {
     // Round (required + 1) up to a multiple of 512 bytes
     required = ((1 + (required >> 9)) << 9);
 
-    buffer = Sodium::sodium_malloc(ALLOC_FOR_BUFFER(required));
+    buffer = (Buffer *)Sodium::sodium_malloc(ALLOC_FOR_BUFFER(required));
     buffer->length = required;
     Sodium::sodium_memzero(buffer->string, required);
 
-    *store = buffer;
+    *store = (char*)buffer;
 
-    return &(buffer->string);
+    return buffer->string;
 }
 
 /** Free the Buffer which contains string. */
 void free_buffer(char *string) {
-    void * const buffer = *(string - sizeof(size_t));
+    void * const buffer = string - sizeof(size_t);
     Sodium::sodium_free(buffer);
 }
 

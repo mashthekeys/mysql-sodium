@@ -22,22 +22,24 @@ MYSQL_STRING_FUNCTION(_sodium_pad,
     if (input == NULL
         || blockSize < 1 || blockSize > 0xffffffff
     ) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     size_t                  maxLength = inputLength + MAX_PAD_LENGTH;
 
     result = dynamic_buffer(result, maxLength, &(initid->ptr));
 
-    strcpy(result, input, inputLength);
+    memcpy(result, input, inputLength);
 
-    unsigned long long paddedLength;
+//    unsigned long paddedLength;
 
-    if (Sodium::sodium_pad(&paddedLength, result, inputLength, blockSize, maxLength) != SUCCESS) {
-        return MYSQL_NULL;
+    if (Sodium::sodium_pad(length, (unsigned char*)result, inputLength, blockSize, maxLength)
+        != SUCCESS
+    ) {
+        return_MYSQL_NULL(NULL);
     }
 
-    *length = (unsigned long)paddedLength;
+//    *length = (unsigned long)paddedLength;
 
     return result;
 }, {
@@ -64,20 +66,20 @@ MYSQL_STRING_FUNCTION(_sodium_unpad,
     if (input == NULL
         || blockSize < 1 || blockSize > 0xffffffff
     ) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     result = dynamic_buffer(result, inputLength, &(initid->ptr));
 
-    strcpy(result, input, inputLength);
+    memcpy(result, input, inputLength);
 
-    unsigned long long messageLength;
+//    size_t messageLength;
 
-    if (Sodium::sodium_unpad(&messageLength, result, inputLength, blockSize) != SUCCESS) {
-        return MYSQL_NULL;
+    if (Sodium::sodium_unpad(length, (unsigned char*)result, inputLength, blockSize) != SUCCESS) {
+        return_MYSQL_NULL(NULL);
     }
 
-    *length = (unsigned long)messageLength;
+//    *length = (unsigned long)messageLength;
 
     return result;
 }, {

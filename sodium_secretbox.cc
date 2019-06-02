@@ -22,12 +22,17 @@ MYSQL_STRING_FUNCTION(sodium_secretbox,
     size_t                  keyLength = args->lengths[2];
 
     if (message == NULL || nonceLength != crypto_secretbox_NONCEBYTES || keyLength != crypto_secretbox_KEYBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     result = fixed_buffer(result, messageLength + crypto_secretbox_MACBYTES);
 
-    MUST_SUCCEED(Sodium::crypto_secretbox_easy(result, message, messageLength, nonce, key));
+    MUST_SUCCEED(Sodium::crypto_secretbox_easy(
+        (unsigned char*)result,
+        (unsigned char*)message, messageLength,
+        (unsigned char*)nonce,
+        (unsigned char*)key
+    ));
 
     return result;
 }, {
@@ -39,7 +44,7 @@ MYSQL_STRING_FUNCTION(sodium_secretbox,
 /* sodium_secretbox_keygen() RETURNS BINARY STRING */
 BUFFER_GENERATOR_FUNCTION(
     sodium_secretbox_keygen,
-    crypto_secretbox_keygen,
+    Sodium::crypto_secretbox_keygen,
     crypto_secretbox_KEYBYTES,
     MYSQL_BINARY_STRING
 );
@@ -67,12 +72,17 @@ MYSQL_STRING_FUNCTION(sodium_secretbox_open,
     size_t                  keyLength = args->lengths[2];
 
     if (cipher == NULL || nonceLength != crypto_secretbox_NONCEBYTES || keyLength != crypto_secretbox_KEYBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
-    result = fixed_buffer(result, cipher + crypto_secretbox_MACBYTES);
+    result = fixed_buffer(result, cipherLength);
 
-    MUST_SUCCEED(Sodium::crypto_secretbox_open_easy(result, cipher, cipherLength, nonce, key));
+    MUST_SUCCEED(Sodium::crypto_secretbox_open_easy(
+        (unsigned char*)result,
+        (unsigned char*)cipher, cipherLength,
+        (unsigned char*)nonce,
+        (unsigned char*)key
+    ));
 
     return result;
 }, {

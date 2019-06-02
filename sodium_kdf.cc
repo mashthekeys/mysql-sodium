@@ -15,26 +15,33 @@ MYSQL_STRING_FUNCTION(sodium_kdf_derive_from_key,
     // main
     const long long keyLength = *((long long *)args->args[0]);
     if (crypto_kdf_BYTES_MIN < keyLength || crypto_kdf_BYTES_MAX > keyLength) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
-    if (args->args[1] == NULL) return MYSQL_NULL;
-    const long long subkeyID = *((long long *)args->args[1]);
+    if (args->args[1] == NULL) return_MYSQL_NULL(NULL);
+    const unsigned long long subkeyID = *((unsigned long long *)args->args[1]);
 
     const char *const context = args->args[2];
     size_t contextLength = args->lengths[2];
     if (contextLength != crypto_kdf_CONTEXTBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     const char *const masterKey = args->args[3];
     size_t masterKeyLength = args->lengths[3];
     if (masterKeyLength != crypto_kdf_KEYBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     result = fixed_buffer(result, keyLength);
-    MUST_SUCCEED(Sodium::crypto_kdf_derive_from_key(result, keyLength, subkeyID, context, masterKey));
+
+    MUST_SUCCEED(Sodium::crypto_kdf_derive_from_key(
+        (unsigned char*)result, keyLength,
+        subkeyID,
+        context,
+        (unsigned char*)masterKey
+    ));
+
     return result;
 }, {
     // deinit
@@ -45,7 +52,7 @@ MYSQL_STRING_FUNCTION(sodium_kdf_derive_from_key,
 /* sodium_kdf_keygen() RETURNS BINARY STRING */
 BUFFER_GENERATOR_FUNCTION(
     sodium_kdf_keygen,
-    crypto_kdf_keygen,
+    Sodium::crypto_kdf_keygen,
     crypto_kdf_KEYBYTES,
     MYSQL_BINARY_STRING
 );

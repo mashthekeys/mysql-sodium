@@ -18,12 +18,12 @@ MYSQL_STRING_FUNCTION(sodium_sign,
     size_t                  secretKeyLength = args->lengths[1];
 
     if (message == NULL || secretKeyLength != crypto_sign_SECRETKEYBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     result = fixed_buffer(result, messageLength + crypto_sign_BYTES);
 
-    MUST_SUCCEED(Sodium::crypto_sign(result, NULL, message, messageLength, secretKey));
+    MUST_SUCCEED(Sodium::crypto_sign((unsigned char*)result, NULL, (unsigned char*)message, messageLength, (unsigned char*)secretKey));
 
     return result;
 }, {
@@ -48,12 +48,12 @@ MYSQL_STRING_FUNCTION(sodium_sign_detached,
     size_t                  secretKeyLength = args->lengths[1];
 
     if (message == NULL || secretKeyLength != crypto_sign_SECRETKEYBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     result = fixed_buffer(result, crypto_sign_BYTES);
 
-    MUST_SUCCEED(Sodium::crypto_sign_detached(result, NULL, message, messageLength, secretKey));
+    MUST_SUCCEED(Sodium::crypto_sign_detached((unsigned char*)result, NULL, (unsigned char*)message, messageLength, (unsigned char*)secretKey));
 
     return result;
 }, {
@@ -71,7 +71,7 @@ MYSQL_STRING_FUNCTION(sodium_sign_keypair,
 }, {
     // main
     result = fixed_buffer(result, crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES);
-    MUST_SUCCEED(Sodium::crypto_sign_keypair(result, result + crypto_sign_PUBLICKEYBYTES));
+    MUST_SUCCEED(Sodium::crypto_sign_keypair((unsigned char*)result, (unsigned char*)result + crypto_sign_PUBLICKEYBYTES));
     return result;
 }, {
     // deinit
@@ -96,16 +96,16 @@ MYSQL_STRING_FUNCTION(sodium_sign_open,
     const char             *publicKey = args->args[1];
     size_t                  publicKeyLength = args->lengths[1];
 
-    if (signedMessage == NULL || publicKey != crypto_sign_PUBLICKEYBYTES) {
-        return MYSQL_NULL;
+    if (signedMessage == NULL || publicKeyLength != crypto_sign_PUBLICKEYBYTES) {
+        return_MYSQL_NULL(NULL);
     }
 
     result = dynamic_buffer(result, signedMessageLength, &(initid->ptr));
 
     unsigned long long messageLength;
 
-    if (Sodium::crypto_sign(result, &messageLength, signedMessage, signedMessageLength, publicKey) != SUCCESS) {
-        return MYSQL_NULL;
+    if (Sodium::crypto_sign((unsigned char*)result, &messageLength, (unsigned char*)signedMessage, signedMessageLength, (unsigned char*)publicKey) != SUCCESS) {
+        return_MYSQL_NULL(NULL);
     }
 
     *length = (unsigned long)messageLength;
@@ -135,12 +135,12 @@ MYSQL_STRING_FUNCTION(sodium_sign_publickey_from_secretkey,
     size_t      secretKeyLength = args->lengths[0];
 
     if (secretKeyLength != crypto_sign_SECRETKEYBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     result = fixed_buffer(result, crypto_sign_PUBLICKEYBYTES);
 
-    MUST_SUCCEED(Sodium::crypto_sign_ed25519_sk_to_pk(result, secretKey));
+    MUST_SUCCEED(Sodium::crypto_sign_ed25519_sk_to_pk((unsigned char*)result, (unsigned char*)secretKey));
 
     return result;
 }, {
@@ -165,12 +165,12 @@ MYSQL_STRING_FUNCTION(sodium_sign_seed_keypair,
     const char             *seed = args->args[0];
     size_t                  seedLength = args->lengths[0];
 
-    if (seedLength != sodium_sign_SEEDBYTES) {
-        return MYSQL_NULL;
+    if (seedLength != crypto_sign_SEEDBYTES) {
+        return_MYSQL_NULL(NULL);
     }
 
     result = fixed_buffer(result, crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES);
-    MUST_SUCCEED(Sodium::crypto_sign_seed_keypair(result, result + crypto_sign_PUBLICKEYBYTES, seed));
+    MUST_SUCCEED(Sodium::crypto_sign_seed_keypair((unsigned char*)result, (unsigned char*)result + crypto_sign_PUBLICKEYBYTES, (unsigned char*)seed));
     return result;
 }, {
     // deinit
@@ -204,7 +204,7 @@ MYSQL_INTEGER_FUNCTION(sodium_sign_verify_detached,
         return FAIL;
     }
 
-    return Sodium::crypto_sign_verify_detached(signature, message, messageLength, publicKey);
+    return Sodium::crypto_sign_verify_detached((unsigned char*)signature, (unsigned char*)message, messageLength, (unsigned char*)publicKey);
 }, {
     // deinit
 });

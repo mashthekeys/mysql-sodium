@@ -16,7 +16,7 @@ const security_level    PWHASH_TYPE_LIST[PWHASH_TYPES] = {
     {"SENSITIVE",   crypto_pwhash_OPSLIMIT_SENSITIVE,   crypto_pwhash_MEMLIMIT_SENSITIVE}
 };
 
-const security_level *pwhash_security_preset(securityLevel, securityLevelLength) {
+const security_level *pwhash_security_preset(const char* securityLevel, size_t securityLevelLength) {
     const security_level *matching_level = NULL;
     long long x;
 
@@ -32,10 +32,11 @@ const security_level *pwhash_security_preset(securityLevel, securityLevelLength)
         }
     }
 }
+
 const char *const pwhash_SECURITY_INVALID = "securityLevel must be INTERACTIVE, MODERATE, SENSITIVE, MAX, or MIN.";
 
-/* sodium_pwhash(hashLength, password, salt, securityLevel) RETURNS BINARY STRING */
-/* sodium_pwhash(hashLength, password, salt, operationLimit, memoryLimit) RETURNS BINARY STRING */
+/* sodium_pwhash(hashLength, password, salt, securityLevel) RETURNS BINARY STRING
+   sodium_pwhash(hashLength, password, salt, operationLimit, memoryLimit) RETURNS BINARY STRING */
 MYSQL_STRING_FUNCTION(sodium_pwhash,
 {
     // init
@@ -127,7 +128,7 @@ MYSQL_STRING_FUNCTION(sodium_pwhash,
 
 
     if (passwd == NULL || passwdLength <= 0 || passwdLength >= 0xffffffff) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     if (opslimit < crypto_pwhash_OPSLIMIT_MIN) {
@@ -139,9 +140,9 @@ MYSQL_STRING_FUNCTION(sodium_pwhash,
     }
 
     MUST_SUCCEED(Sodium::crypto_pwhash(
-        result, hashLength,
+        (unsigned char*) result, hashLength,
         passwd, (unsigned long long) passwdLength,
-        salt,
+        (unsigned char*) salt,
         opslimit, memlimit,
         crypto_pwhash_ALG_DEFAULT
     ));
@@ -160,9 +161,9 @@ MYSQL_STRING_FUNCTION(sodium_pwhash,
 MYSQL_INTEGER_FUNCTION(sodium_pwhash_memlimit,
 {
     // init
-    REQUIRE_CONST_STRING(0);
+    REQUIRE_CONST_STRING(0, securityLevel);
 
-    initid->ptr = pwhash_security_preset(args->args[0]);
+    initid->ptr = (char*)pwhash_security_preset(args->args[0], args->lengths[0]);
 
     initid->maybe_null = 1;
 
@@ -171,23 +172,23 @@ MYSQL_INTEGER_FUNCTION(sodium_pwhash_memlimit,
     const security_level* ptr = (const security_level*)(initid->ptr);
 
     if (ptr == NULL) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(0);
     }
     return ptr->memlimit;
 }, {
     // deinit
     initid->ptr = NULL;
 }
-}
+);
 
 
 /* sodium_pwhash_opslimit(securityLevel) RETURNS INTEGER */
 MYSQL_INTEGER_FUNCTION(sodium_pwhash_opslimit,
 {
     // init
-    REQUIRE_CONST_STRING(0);
+    REQUIRE_CONST_STRING(0, securityLevel);
 
-    initid->ptr = pwhash_security_preset(args->args[0]);
+    initid->ptr = (char*)pwhash_security_preset(args->args[0], args->lengths[0]);
 
     initid->maybe_null = 1;
 
@@ -196,15 +197,14 @@ MYSQL_INTEGER_FUNCTION(sodium_pwhash_opslimit,
     const security_level* ptr = (const security_level*)(initid->ptr);
 
     if (ptr == NULL) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(0);
     }
     return ptr->opslimit;
 }, {
     // deinit
     initid->ptr = NULL;
 }
-}
-
+);
 
 
 #if crypto_pwhash_STRBYTES >= mysql_RESULT_LENGTH
@@ -280,7 +280,7 @@ MYSQL_STRING_FUNCTION(sodium_pwhash_str,
 
 
     if (passwd == NULL || passwd_len <= 0 || passwd_len >= 0xffffffff) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(NULL);
     }
 
     if (opslimit < crypto_pwhash_OPSLIMIT_MIN) {
@@ -303,12 +303,10 @@ MYSQL_STRING_FUNCTION(sodium_pwhash_str,
 },
 { // deinit:
     initid->ptr = NULL;
-}
-);
+});
 
-
-/* sodium_pwhash_str_needs_rehash(hashStr, securityLevel) RETURNS INTEGER */
-/* sodium_pwhash_str_needs_rehash(hashStr, operationLimit, memoryLimit) RETURNS INTEGER */
+/** sodium_pwhash_str_needs_rehash(hashStr, securityLevel) RETURNS INTEGER
+    sodium_pwhash_str_needs_rehash(hashStr, operationLimit, memoryLimit) RETURNS INTEGER */
 MYSQL_INTEGER_FUNCTION(sodium_pwhash_str_needs_rehash,
 {
     // init
@@ -354,7 +352,7 @@ MYSQL_INTEGER_FUNCTION(sodium_pwhash_str_needs_rehash,
     size_t                  hashStrLength = args->lengths[0];
 
     if (hashStr == NULL || hashStrLength != crypto_pwhash_STRBYTES) {
-        return MYSQL_NULL;
+        return_MYSQL_NULL(FAIL);
     }
 
     size_t                  memlimit;
@@ -396,25 +394,25 @@ MYSQL_INTEGER_FUNCTION(sodium_pwhash_str_verify,
     REQUIRE_STRING(1, password);
 }, {
     // main
-    const char             *hashStr = args->args[0];
-    size_t                  hashStrLength = args->lengths[0];
+    const char     *hashStr = args->args[0];
+    size_t          hashStrLength = args->lengths[0];
 
     if (hashStrLength == 0 || hashStrLength > crypto_pwhash_STRBYTES) {
         return FAIL;
     }
 
     // crypto_pwhash_str_verify needs a zero-terminated string, which mysql does not provide
-    const char              hashStrCopy[crypto_pwhash_STRBYTES + 1];
-    strcpy(hashStrCopy, hashStr, hashStrLength);
+    char            hashStrCopy[crypto_pwhash_STRBYTES + 1];
+    memcpy(hashStrCopy, hashStr, hashStrLength);
     hashStrCopy[hashStrLength] = 0;
 
 
-    const char             *passwd = args->args[1];
-    size_t                  passwdLength = args->lengths[1];
+    char           *passwd = args->args[1];
+    size_t          passwdLength = args->lengths[1];
 
-    const int verifySuccess = crypto_pwhash_str_verify(hashStrCopy, passwd, passwdLength);
+    const int verifySuccess = Sodium::crypto_pwhash_str_verify(hashStrCopy, passwd, passwdLength);
 
-    sodium_memzero(hashStrCopy, sizeof(hashStrCopy));
+    Sodium::sodium_memzero(hashStrCopy, sizeof(hashStrCopy));
 
     return verifySuccess;
 }, {
