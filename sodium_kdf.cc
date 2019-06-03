@@ -1,7 +1,8 @@
 #include "sodium_udf.h"
 
+/* sodium_kdf(keyLength, subkeyID, context, masterKey) RETURNS BINARY STRING */
 /* sodium_kdf_derive_from_key(keyLength, subkeyID, context, masterKey) RETURNS BINARY STRING */
-MYSQL_STRING_FUNCTION(sodium_kdf_derive_from_key,
+MYSQL_STRING_FUNCTION(sodium_kdf,
 {
     // init
     REQUIRE_ARGS(4);
@@ -47,6 +48,8 @@ MYSQL_STRING_FUNCTION(sodium_kdf_derive_from_key,
     // deinit
     if (initid->ptr != NULL) free_buffer(initid->ptr);
 });
+
+UDF_STRING_ALIAS(sodium_kdf_derive_from_key, sodium_kdf);
 
 
 /* sodium_kdf_keygen() RETURNS BINARY STRING */

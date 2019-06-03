@@ -148,5 +148,29 @@ MYSQL_STRING_FUNCTION(buffer_udf, \
     if (initid->ptr != NULL)  free(initid->ptr); \
 });
 
+#define UDF_STRING_ALIAS(udf_type, alias_udf, implementation_udf) \
+extern "C" char* alias_udf(UDF_INIT *initid, UDF_ARGS *args, char *result, unsigned long *length, char *is_null, char *error)\
+{ return implementation_udf(initid, args, result, length, is_null, error); } \
+extern "C" bool alias_udf##_init(UDF_INIT *initid, UDF_ARGS *args, char *message)\
+{ return implementation_udf##_init(initid, args, message); } \
+extern "C" void alias_udf##_deinit(UDF_INIT *initid)\
+{ return implementation_udf##_deinit(initid); }
+
+#define UDF_INTEGER_ALIAS(udf_type, alias_udf, implementation_udf) \
+extern "C" long long alias_udf(UDF_INIT *initid, UDF_ARGS *args, char *result, unsigned long *length, char *is_null, char *error)\
+{ return implementation_udf(initid, args, result, length, is_null, error); } \
+extern "C" bool alias_udf##_init(UDF_INIT *initid, UDF_ARGS *args, char *message)\
+{ return implementation_udf##_init(initid, args, message); } \
+extern "C" void alias_udf##_deinit(UDF_INIT *initid)\
+{ return implementation_udf##_deinit(initid); }
+
+#define UDF_DOUBLE_ALIAS(udf_type, alias_udf, implementation_udf) \
+extern "C" double alias_udf(UDF_INIT *initid, UDF_ARGS *args, char *result, unsigned long *length, char *is_null, char *error)\
+{ return implementation_udf(initid, args, result, length, is_null, error); } \
+extern "C" bool alias_udf##_init(UDF_INIT *initid, UDF_ARGS *args, char *message)\
+{ return implementation_udf##_init(initid, args, message); } \
+extern "C" void alias_udf##_deinit(UDF_INIT *initid)\
+{ return implementation_udf##_deinit(initid); }
+
 #endif
 ;

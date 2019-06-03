@@ -123,16 +123,19 @@ MYSQL_STRING_FUNCTION(sodium_box_open,
 });
 
 
-/* sodium_box_publickey(keyPair) RETURNS BINARY STRING */
-SUBSTRING_FUNCTION(sodium_box_publickey,
+/* sodium_box_pk(keyPair) RETURNS BINARY STRING */
+/* ALIAS sodium_box_publickey(keyPair) RETURNS BINARY STRING */
+SUBSTRING_FUNCTION(sodium_box_pk,
     keyPair, MYSQL_BINARY_STRING,
     0, crypto_box_PUBLICKEYBYTES,
     crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES
 );
 
+UDF_STRING_ALIAS(sodium_box_publickey, sodium_box_pk);
 
-/* sodium_box_publickey_from_secretkey(secretKey) RETURNS BINARY STRING */
-MYSQL_STRING_FUNCTION(sodium_box_publickey_from_secretkey,
+/* sodium_box_sk2pk(secretKey) RETURNS BINARY STRING */
+/* ALIAS sodium_box_publickey_from_secretkey(secretKey) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(sodium_box_sk2pk,
 {
     // init
     REQUIRE_ARGS(1);
@@ -156,6 +159,8 @@ MYSQL_STRING_FUNCTION(sodium_box_publickey_from_secretkey,
     // deinit
     if (initid->ptr != NULL) free_buffer(initid->ptr);
 });
+
+UDF_STRING_ALIAS(sodium_box_publickey_from_secretkey, sodium_box_sk2pk);
 
 
 /** sodium_box_seal(message, publicKey) RETURNS STRING */
@@ -239,13 +244,15 @@ MYSQL_STRING_FUNCTION(sodium_box_seal_open,
 });
 
 
-/* sodium_box_secretkey(keyPair) RETURNS STRING */
-
-SUBSTRING_FUNCTION(sodium_box_secretkey,
+/* sodium_box_sk(keyPair) RETURNS STRING */
+/* ALIAS sodium_box_secretkey(keyPair) RETURNS STRING */
+SUBSTRING_FUNCTION(sodium_box_sk,
     keyPair, MYSQL_BINARY_STRING,
     crypto_box_PUBLICKEYBYTES, crypto_box_SECRETKEYBYTES,
     crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES
 );
+
+UDF_STRING_ALIAS(sodium_box_secretkey, sodium_box_sk);
 
 
 /* sodium_box_seed_keypair(seed) RETURNS BINARY STRING */

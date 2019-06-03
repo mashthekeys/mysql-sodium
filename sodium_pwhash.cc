@@ -157,8 +157,8 @@ MYSQL_STRING_FUNCTION(sodium_pwhash,
 });
 
 
-/* sodium_pwhash_memlimit(securityLevel) RETURNS INTEGER */
-MYSQL_INTEGER_FUNCTION(sodium_pwhash_memlimit,
+/* sodium_pw_memory(securityLevel) RETURNS INTEGER */
+MYSQL_INTEGER_FUNCTION(sodium_pw_memory,
 {
     // init
     REQUIRE_CONST_STRING(0, securityLevel);
@@ -182,8 +182,8 @@ MYSQL_INTEGER_FUNCTION(sodium_pwhash_memlimit,
 );
 
 
-/* sodium_pwhash_opslimit(securityLevel) RETURNS INTEGER */
-MYSQL_INTEGER_FUNCTION(sodium_pwhash_opslimit,
+/* sodium_pw_operations(securityLevel) RETURNS INTEGER */
+MYSQL_INTEGER_FUNCTION(sodium_pw_operations,
 {
     // init
     REQUIRE_CONST_STRING(0, securityLevel);
@@ -211,14 +211,16 @@ MYSQL_INTEGER_FUNCTION(sodium_pwhash_opslimit,
     #error "crypto_pwhash_STRBYTES is too large"
 #endif
 
-/** sodium_pwhash_str(message, memoryLimit, operationLimit) RETURNS BINARY STRING
+/** sodium_pw(message, memoryLimit, operationLimit) RETURNS BINARY STRING
  *
- *  sodium_pwhash_str(message, securityLevel) RETURNS BINARY STRING
+ *  sodium_pw(message, securityLevel) RETURNS BINARY STRING
  *      securityLevel must be 'INTERACTIVE', 'MODERATE', 'SENSITIVE', 'MAX', or 'MIN'
  *
- * @CREATE FUNCTION sodium_pwhash_str() RETURNS STRING
+ * ALIAS sodium_pwhash_str
+ *
+ * @CREATE FUNCTION sodium_pw() RETURNS STRING
  */
-MYSQL_STRING_FUNCTION(sodium_pwhash_str,
+MYSQL_STRING_FUNCTION(sodium_pw,
 { // init:
     REQUIRE_STRING(0, password);
 
@@ -305,9 +307,14 @@ MYSQL_STRING_FUNCTION(sodium_pwhash_str,
     initid->ptr = NULL;
 });
 
-/** sodium_pwhash_str_needs_rehash(hashStr, securityLevel) RETURNS INTEGER
-    sodium_pwhash_str_needs_rehash(hashStr, operationLimit, memoryLimit) RETURNS INTEGER */
-MYSQL_INTEGER_FUNCTION(sodium_pwhash_str_needs_rehash,
+UDF_STRING_ALIAS(sodium_pwhash_str, sodium_pw);
+
+
+/** sodium_pw_outdated(hashStr, securityLevel) RETURNS INTEGER
+ * sodium_pw_outdated(hashStr, operationLimit, memoryLimit) RETURNS INTEGER
+ * ALIAS sodium_pwhash_str_needs_rehash
+ */
+MYSQL_INTEGER_FUNCTION(sodium_pw_outdated,
 {
     // init
     REQUIRE_STRING(0, hashStr);
@@ -384,9 +391,13 @@ MYSQL_INTEGER_FUNCTION(sodium_pwhash_str_needs_rehash,
     initid->ptr = NULL;
 });
 
+UDF_INTEGER_ALIAS(sodium_pwhash_str_needs_rehash, sodium_pw_outdated);
 
-/* sodium_pwhash_str_verify(hashStr, password) RETURNS INTEGER */
-MYSQL_INTEGER_FUNCTION(sodium_pwhash_str_verify,
+
+/** sodium_pw_verify(hashStr, password) RETURNS INTEGER
+ *  ALIAS sodium_pwhash_str_verify
+ */
+MYSQL_INTEGER_FUNCTION(sodium_pw_verify,
 {
     // init
     REQUIRE_ARGS(2);
@@ -401,7 +412,7 @@ MYSQL_INTEGER_FUNCTION(sodium_pwhash_str_verify,
         return FAIL;
     }
 
-    // crypto_pwhash_str_verify needs a zero-terminated string, which mysql does not provide
+    // crypto_pwhash_str_verify needs a zero-terminated string, which Mysql does not provide
     char            hashStrCopy[crypto_pwhash_STRBYTES + 1];
     memcpy(hashStrCopy, hashStr, hashStrLength);
     hashStrCopy[hashStrLength] = 0;
@@ -418,3 +429,5 @@ MYSQL_INTEGER_FUNCTION(sodium_pwhash_str_verify,
 }, {
     // deinit
 });
+
+UDF_INTEGER_ALIAS(sodium_pwhash_str_verify, sodium_pw_verify);

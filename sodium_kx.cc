@@ -40,18 +40,44 @@ MYSQL_STRING_FUNCTION(sodium_kx_client_session_keys,
 
 
 /* sodium_kx_keypair() RETURNS BINARY STRING */
+/* sodium_kx_keypair(seed) RETURNS BINARY STRING */
 MYSQL_STRING_FUNCTION(sodium_kx_keypair,
 {
     // init
-    REQUIRE_ARGS(0);
+    switch (args->arg_count) {
+        case 0:
+            break;
+        case 1:
+            REQUIRE_STRING(0, seed);
+            break;
+        default:
+            strcpy(message, "0-1 arguments required");
+            return 1;
+    }
     initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
     result = fixed_buffer(result, crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES);
-    MUST_SUCCEED(Sodium::crypto_kx_keypair(
-        (unsigned char*)result,
-        (unsigned char*)result + crypto_kx_PUBLICKEYBYTES
-    ));
+
+    if (args->arg_count) {
+        // Syntax sodium_kx_keypair(seed)
+        const char *const seed = args->args[0];
+        if (args->lengths[0] != crypto_kx_SEEDBYTES) {
+            return_MYSQL_NULL(NULL);
+        }
+
+        MUST_SUCCEED(Sodium::crypto_kx_seed_keypair(
+            (unsigned char*)result,
+            (unsigned char*)result + crypto_kx_PUBLICKEYBYTES,
+            (unsigned char*)seed
+        ));
+    } else {
+        // Syntax sodium_kx_keypair()
+        MUST_SUCCEED(Sodium::crypto_kx_keypair(
+            (unsigned char*)result,
+            (unsigned char*)result + crypto_kx_PUBLICKEYBYTES
+        ));
+    }
     return result;
 }, {
     // deinit
@@ -59,48 +85,25 @@ MYSQL_STRING_FUNCTION(sodium_kx_keypair,
 });
 
 
-/* sodium_kx_publickey(keyPair) RETURNS BINARY STRING */
+/* sodium_kx_pk(keyPair) RETURNS BINARY STRING */
+/* ALIAS sodium_kx_publickey(keyPair) RETURNS BINARY STRING */
 SUBSTRING_FUNCTION(sodium_kx_publickey,
     keyPair, MYSQL_BINARY_STRING,
     0, crypto_kx_PUBLICKEYBYTES,
     crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES
 );
 
-/* sodium_kx_secretkey(keyPair) RETURNS BINARY STRING */
-SUBSTRING_FUNCTION(sodium_kx_secretkey,
+UDF_STRING_ALIAS(sodium_kx_publickey, sodium_kx_pk);
+
+/* sodium_kx_sk(keyPair) RETURNS BINARY STRING */
+/* ALIAS sodium_kx_secretkey(keyPair) RETURNS BINARY STRING */
+SUBSTRING_FUNCTION(sodium_kx_sk,
     keyPair, MYSQL_BINARY_STRING,
     crypto_kx_PUBLICKEYBYTES, crypto_kx_SECRETKEYBYTES,
     crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES
 );
 
-
-/* sodium_kx_seed_keypair(seed) RETURNS BINARY STRING */
-MYSQL_STRING_FUNCTION(sodium_kx_seed_keypair,
-{
-    // init
-    REQUIRE_ARGS(1);
-    REQUIRE_STRING(0, seed);
-    initid->max_length = MYSQL_BINARY_STRING;
-}, {
-    // main
-    const char *const seed = args->args[0];
-    if (args->lengths[0] != crypto_kx_SEEDBYTES) {
-        return_MYSQL_NULL(NULL);
-    }
-
-    result = fixed_buffer(result, crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES);
-
-    MUST_SUCCEED(Sodium::crypto_kx_seed_keypair(
-        (unsigned char*)result,
-        (unsigned char*)result + crypto_kx_PUBLICKEYBYTES,
-        (unsigned char*)seed
-    ));
-
-    return result;
-}, {
-    // deinit
-    if (initid->ptr != NULL) free_buffer(initid->ptr);
-});
+UDF_STRING_ALIAS(sodium_kx_secretkey, sodium_kx_sk);
 
 
 /* sodium_kx_server_session_keys(serverPublicKey, serverSecretKey, clientPublicKey) RETURNS BINARY STRING */

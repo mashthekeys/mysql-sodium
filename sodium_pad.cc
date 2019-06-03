@@ -4,8 +4,8 @@
 #define MAX_PAD_LENGTH 1024
 
 
-/* _sodium_pad(input) RETURNS BINARY STRING */
-MYSQL_STRING_FUNCTION(_sodium_pad,
+/* block_pad(input) RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(block_pad,
 {
     // init
     REQUIRE_ARGS(2);
@@ -48,8 +48,8 @@ MYSQL_STRING_FUNCTION(_sodium_pad,
 });
 
 
-/* _sodium_unpad() RETURNS BINARY STRING */
-MYSQL_STRING_FUNCTION(_sodium_unpad,
+/* block_unpad() RETURNS BINARY STRING */
+MYSQL_STRING_FUNCTION(block_unpad,
 {
     // init
     REQUIRE_ARGS(2);
