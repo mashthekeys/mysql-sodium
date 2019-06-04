@@ -2,41 +2,64 @@
 
 struct security_level {
     const char               *name;
+    const size_t              nameLength;
     const unsigned long long  opslimit;
     const size_t              memlimit;
 };
 
 const size_t            PWHASH_TYPES = 5;
 
-const security_level    PWHASH_TYPE_LIST[PWHASH_TYPES] = {
-    {"INTERACTIVE", crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE},
-    {"MAX",         crypto_pwhash_OPSLIMIT_MAX,         crypto_pwhash_MEMLIMIT_MAX},
-    {"MIN",         crypto_pwhash_OPSLIMIT_MIN,         crypto_pwhash_MEMLIMIT_MIN},
-    {"MODERATE",    crypto_pwhash_OPSLIMIT_MODERATE,    crypto_pwhash_MEMLIMIT_MODERATE},
-    {"SENSITIVE",   crypto_pwhash_OPSLIMIT_SENSITIVE,   crypto_pwhash_MEMLIMIT_SENSITIVE}
-};
+const security_level    PWHASH_TYPE_LIST[PWHASH_TYPES] = {{
+    "INTERACTIVE",
+    sizeof("INTERACTIVE") - 1,
+    crypto_pwhash_OPSLIMIT_INTERACTIVE,
+    crypto_pwhash_MEMLIMIT_INTERACTIVE
+}, {
+    "MAX",
+    sizeof("MAX") - 1,
+    crypto_pwhash_OPSLIMIT_MAX,
+    crypto_pwhash_MEMLIMIT_MAX
+}, {
+    "MIN",
+    sizeof("MIN") - 1,
+    crypto_pwhash_OPSLIMIT_MIN,
+    crypto_pwhash_MEMLIMIT_MIN
+}, {
+    "MODERATE",
+    sizeof("MODERATE") - 1,
+    crypto_pwhash_OPSLIMIT_MODERATE,
+    crypto_pwhash_MEMLIMIT_MODERATE
+}, {
+    "SENSITIVE",
+    sizeof("SENSITIVE") - 1,
+    crypto_pwhash_OPSLIMIT_SENSITIVE,
+    crypto_pwhash_MEMLIMIT_SENSITIVE
+}};
+
+const char pwhash_SECURITY_INVALID[] = "securityLevel must be INTERACTIVE, MODERATE, SENSITIVE, MAX, or MIN.";
 
 const security_level *pwhash_security_preset(const char* securityLevel, size_t securityLevelLength) {
     const security_level *matching_level = NULL;
-    long long x;
+    long long i;
 
-    for (x = 0; x < PWHASH_TYPES; ++x) {
-        const char *type = PWHASH_TYPE_LIST[x].name;
-        size_t typeLength = strlen(type);
+    for (i = 0; i < PWHASH_TYPES; ++i) {
+        const char *type = PWHASH_TYPE_LIST[i].name;
+        size_t typeLength = PWHASH_TYPE_LIST[i].nameLength;
 
         if (securityLevelLength == typeLength
             && strncasecmp(type, securityLevel, typeLength) == 0
         ) {
-            matching_level = PWHASH_TYPE_LIST + x;
+            matching_level = PWHASH_TYPE_LIST + i;
             break;
         }
     }
+    return matching_level;
 }
 
-const char *const pwhash_SECURITY_INVALID = "securityLevel must be INTERACTIVE, MODERATE, SENSITIVE, MAX, or MIN.";
-
-/* sodium_pwhash(hashLength, password, salt, securityLevel) RETURNS BINARY STRING
-   sodium_pwhash(hashLength, password, salt, operationLimit, memoryLimit) RETURNS BINARY STRING */
+/** sodium_pwhash(hashLength, password, salt, securityLevel) RETURNS BINARY STRING
+ *  sodium_pwhash(hashLength, password, salt, operationLimit, memoryLimit) RETURNS BINARY STRING
+ * @CREATE FUNCTION sodium_pwhash() RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_pwhash,
 {
     // init
@@ -51,7 +74,7 @@ MYSQL_STRING_FUNCTION(sodium_pwhash,
         return 1;
     }
     if (hashLength > mysql_RESULT_LENGTH) {
-        strcpy(message, "hashLength is too large for mysql-sodium v0.1");
+        strcpy(message, "hashLength is too large for mysql-sodium");
         return 1;
         // initid->ptr would need to be used for both
         // (1) storing the securityLevel
@@ -106,24 +129,24 @@ MYSQL_STRING_FUNCTION(sodium_pwhash,
     // main
     const long long hashLength = *((long long *)args->args[0]);
 
-    const char             *passwd = args->args[1];
-    size_t                  passwdLength = args->lengths[1];
+    const char *const       passwd = args->args[1];
+    const size_t            passwdLength = args->lengths[1];
 
-    const char             *salt = args->args[2];
-    size_t                  saltLength = args->lengths[2];
+    const char *const       salt = args->args[2];
+    const size_t            saltLength = args->lengths[2];
 
     size_t                  memlimit;
     unsigned long long      opslimit;
 
     if (initid->ptr != NULL) {
-        const security_level   *ptr = (security_level *)(initid->ptr);
+        const security_level *const  ptr = (security_level *)(initid->ptr);
 
         memlimit = ptr->memlimit;
         opslimit = ptr->opslimit;
 
     } else {
-        memlimit = args->args[3] ? *((unsigned long long *)args->args[3]) : 0;
-        opslimit = args->args[4] ? (size_t)*((long long *)args->args[4]) : 0;
+        memlimit = args->args[3] ? (size_t)*((unsigned long long *)args->args[3]) : 0;
+        opslimit = args->args[4] ? *((unsigned long long *)args->args[4]) : 0;
     }
 
 
@@ -157,7 +180,7 @@ MYSQL_STRING_FUNCTION(sodium_pwhash,
 });
 
 
-/* sodium_pw_memory(securityLevel) RETURNS INTEGER */
+/** sodium_pw_memory(securityLevel) RETURNS INTEGER */
 MYSQL_INTEGER_FUNCTION(sodium_pw_memory,
 {
     // init
@@ -182,7 +205,7 @@ MYSQL_INTEGER_FUNCTION(sodium_pw_memory,
 );
 
 
-/* sodium_pw_operations(securityLevel) RETURNS INTEGER */
+/** sodium_pw_operations(securityLevel) RETURNS INTEGER */
 MYSQL_INTEGER_FUNCTION(sodium_pw_operations,
 {
     // init
@@ -216,9 +239,9 @@ MYSQL_INTEGER_FUNCTION(sodium_pw_operations,
  *  sodium_pw(message, securityLevel) RETURNS BINARY STRING
  *      securityLevel must be 'INTERACTIVE', 'MODERATE', 'SENSITIVE', 'MAX', or 'MIN'
  *
- * ALIAS sodium_pwhash_str
- *
  * @CREATE FUNCTION sodium_pw() RETURNS STRING
+ *
+ * @ALIAS sodium_pwhash_str
  */
 MYSQL_STRING_FUNCTION(sodium_pw,
 { // init:
@@ -263,25 +286,24 @@ MYSQL_STRING_FUNCTION(sodium_pw,
     return 0;
 },
 { // main:
-    const char             *passwd = args->args[0];
-    size_t                  passwd_len = args->lengths[0];
+    const char *const       passwd = args->args[0];
+    const size_t            passwdLength = args->lengths[0];
     size_t                  memlimit;
     unsigned long long      opslimit;
-    const security_level   *ptr;
 
     if (initid->ptr != NULL) {
-        ptr = (security_level *)(initid->ptr);
+        const security_level *const ptr = (security_level *)(initid->ptr);
 
         memlimit = ptr->memlimit;
         opslimit = ptr->opslimit;
 
     } else {
-        memlimit = args->args[1] ? *((unsigned long long *)args->args[1]) : 0;
-        opslimit = args->args[2] ? (size_t)*((long long *)args->args[2]) : 0;
+        memlimit = args->args[1] ? (size_t)*((unsigned long long *)args->args[1]) : 0;
+        opslimit = args->args[2] ? *((unsigned long long *)args->args[2]) : 0;
     }
 
 
-    if (passwd == NULL || passwd_len <= 0 || passwd_len >= 0xffffffff) {
+    if (passwd == NULL || passwdLength < crypto_pwhash_PASSWD_MIN || passwdLength > crypto_pwhash_PASSWD_MAX) {
         return_MYSQL_NULL(NULL);
     }
 
@@ -294,10 +316,11 @@ MYSQL_STRING_FUNCTION(sodium_pw,
     }
 
     MUST_SUCCEED(Sodium::crypto_pwhash_str(
-        result, passwd, (unsigned long long) passwd_len,
+        result, passwd, (unsigned long long) passwdLength,
         opslimit, memlimit
     ));
 
+    // Null-terminate the buffer then read the length in case crypto_pwhash_str returned a shorter string */
     result[crypto_pwhash_STRBYTES] = (char)0;
     *length = (unsigned long)strlen(result);
 
@@ -310,9 +333,14 @@ MYSQL_STRING_FUNCTION(sodium_pw,
 UDF_STRING_ALIAS(sodium_pwhash_str, sodium_pw);
 
 
-/** sodium_pw_outdated(hashStr, securityLevel) RETURNS INTEGER
- * sodium_pw_outdated(hashStr, operationLimit, memoryLimit) RETURNS INTEGER
- * ALIAS sodium_pwhash_str_needs_rehash
+/** sodium_pw_outdated(hashStr, operationLimit, memoryLimit) RETURNS INTEGER
+ *
+ * sodium_pw_outdated(hashStr, securityLevel) RETURNS INTEGER
+ *      securityLevel must be 'INTERACTIVE', 'MODERATE', 'SENSITIVE', 'MAX', or 'MIN'
+ *
+ * @CREATE FUNCTION sodium_pw_outdated() RETURNS INTEGER
+ *
+ * @ALIAS sodium_pwhash_str_needs_rehash
  */
 MYSQL_INTEGER_FUNCTION(sodium_pw_outdated,
 {
@@ -355,8 +383,8 @@ MYSQL_INTEGER_FUNCTION(sodium_pw_outdated,
     }
 }, {
     // main
-    const char             *hashStr = args->args[0];
-    size_t                  hashStrLength = args->lengths[0];
+    const char *const       hashStr = args->args[0];
+    const size_t            hashStrLength = args->lengths[0];
 
     if (hashStr == NULL || hashStrLength != crypto_pwhash_STRBYTES) {
         return_MYSQL_NULL(FAIL);
@@ -372,8 +400,8 @@ MYSQL_INTEGER_FUNCTION(sodium_pw_outdated,
         opslimit = ptr->opslimit;
 
     } else {
-        memlimit = args->args[1] ? *((unsigned long long *)args->args[1]) : 0;
-        opslimit = args->args[2] ? (size_t)*((long long *)args->args[2]) : 0;
+        memlimit = args->args[1] ? (size_t)*((unsigned long long *)args->args[1]) : 0;
+        opslimit = args->args[2] ? *((unsigned long long *)args->args[2]) : 0;
     }
 
 
@@ -395,7 +423,10 @@ UDF_INTEGER_ALIAS(sodium_pwhash_str_needs_rehash, sodium_pw_outdated);
 
 
 /** sodium_pw_verify(hashStr, password) RETURNS INTEGER
- *  ALIAS sodium_pwhash_str_verify
+ *
+ * @CREATE FUNCTION sodium_pw_verify() RETURNS INTEGER
+ *
+ * @ALIAS sodium_pwhash_str_verify
  */
 MYSQL_INTEGER_FUNCTION(sodium_pw_verify,
 {
@@ -405,21 +436,24 @@ MYSQL_INTEGER_FUNCTION(sodium_pw_verify,
     REQUIRE_STRING(1, password);
 }, {
     // main
-    const char     *hashStr = args->args[0];
-    size_t          hashStrLength = args->lengths[0];
+    const char *const   hashStr = args->args[0];
+    const size_t        hashStrLength = args->lengths[0];
 
     if (hashStrLength == 0 || hashStrLength > crypto_pwhash_STRBYTES) {
         return FAIL;
     }
 
-    // crypto_pwhash_str_verify needs a zero-terminated string, which Mysql does not provide
-    char            hashStrCopy[crypto_pwhash_STRBYTES + 1];
+    const char *const   passwd = args->args[1];
+    const size_t        passwdLength = args->lengths[1];
+
+    if (passwd == NULL || passwdLength < crypto_pwhash_PASSWD_MIN || passwdLength > crypto_pwhash_PASSWD_MAX) {
+        return FAIL;
+    }
+
+    // crypto_pwhash_str_verify needs a zero-terminated string, which Mysql does not guarantee
+    char                hashStrCopy[crypto_pwhash_STRBYTES + 1];
     memcpy(hashStrCopy, hashStr, hashStrLength);
     hashStrCopy[hashStrLength] = 0;
-
-
-    char           *passwd = args->args[1];
-    size_t          passwdLength = args->lengths[1];
 
     const int verifySuccess = Sodium::crypto_pwhash_str_verify(hashStrCopy, passwd, passwdLength);
 
