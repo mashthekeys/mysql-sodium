@@ -14,10 +14,10 @@ MYSQL_STRING_FUNCTION(block_pad,
     initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    const char             *input = args->args[0];
-    size_t                  inputLength = args->lengths[0];
+    const char *    input = args->args[0];
+    const size_t    inputLength = args->lengths[0];
 
-    long long               blockSize = *(long long*)args->args[1];
+    const long long blockSize = *(long long*)args->args[1];
 
     if (input == NULL
         || blockSize < 1 || blockSize > 0xffffffff
@@ -25,21 +25,21 @@ MYSQL_STRING_FUNCTION(block_pad,
         return_MYSQL_NULL(NULL);
     }
 
-    size_t                  maxLength = inputLength + MAX_PAD_LENGTH;
+    const size_t    maxLength = inputLength + MAX_PAD_LENGTH;
 
     result = dynamic_buffer(result, maxLength, &(initid->ptr));
 
     memcpy(result, input, inputLength);
 
-//    unsigned long paddedLength;
+    size_t paddedLength;
 
-    if (Sodium::sodium_pad(length, (unsigned char*)result, inputLength, blockSize, maxLength)
+    if (Sodium::sodium_pad(paddedLength, (unsigned char*)result, inputLength, blockSize, maxLength)
         != SUCCESS
     ) {
         return_MYSQL_NULL(NULL);
     }
 
-//    *length = (unsigned long)paddedLength;
+    *length = (unsigned long)paddedLength;
 
     return result;
 }, {
@@ -58,10 +58,10 @@ MYSQL_STRING_FUNCTION(block_unpad,
     initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    const char             *input = args->args[0];
-    size_t                  inputLength = args->lengths[0];
+    const char *    input = args->args[0];
+    const size_t    inputLength = args->lengths[0];
 
-    long long               blockSize = *(long long*)args->args[1];
+    const long long blockSize = *(long long*)args->args[1];
 
     if (input == NULL
         || blockSize < 1 || blockSize > 0xffffffff
@@ -73,13 +73,13 @@ MYSQL_STRING_FUNCTION(block_unpad,
 
     memcpy(result, input, inputLength);
 
-//    size_t messageLength;
+    size_t resultLength;
 
-    if (Sodium::sodium_unpad(length, (unsigned char*)result, inputLength, blockSize) != SUCCESS) {
+    if (Sodium::sodium_unpad(&resultLength, (unsigned char*)result, inputLength, blockSize) != SUCCESS) {
         return_MYSQL_NULL(NULL);
     }
 
-//    *length = (unsigned long)messageLength;
+    *length = (unsigned long)resultLength;
 
     return result;
 }, {
