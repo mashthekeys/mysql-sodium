@@ -87,7 +87,7 @@ MYSQL_STRING_FUNCTION(sodium_kx_keypair,
 
 /* sodium_kx_pk(keyPair) RETURNS BINARY STRING */
 /* ALIAS sodium_kx_publickey(keyPair) RETURNS BINARY STRING */
-SUBSTRING_FUNCTION(sodium_kx_publickey,
+SUBSTRING_FUNCTION(sodium_kx_pk,
     keyPair, MYSQL_BINARY_STRING,
     0, crypto_kx_PUBLICKEYBYTES,
     crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES
