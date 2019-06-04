@@ -11,24 +11,18 @@
 
 #include "sodium_udf.h"
 
-#ifndef __PACKED__
-# if defined(__INTEL_COMPILER) || defined(_MSC_VER)
-#  define __PACKED__ __declspec(align(1))
-# else
-#  define __PACKED__ __attribute__ ((__packed__))
-# endif
-#endif
+#define STRING_OFFSET               8
 
-struct __PACKED__ Buffer {
+#define ALLOC_FOR_BUFFER(capacity)  (STRING_OFFSET + capacity)
+
+#define SIZEOF_BUFFER(B)            (STRING_OFFSET + (B->length))
+
+struct CRYPTO_ALIGN(8) Buffer {
     /** Maximum length available in this buffer, including the final, reserved, null byte. */
     size_t  length;
     /** Each buffer is over-allocated such that string is really char[length]. */
     char    string[1];
 };
-
-#define ALLOC_FOR_BUFFER(capacity)  (sizeof(Buffer) + capacity)
-
-#define SIZEOF_BUFFER(B)            (sizeof(size_t) + B->length)
 
 
 // Used in the macro fixed_buffer
@@ -65,7 +59,7 @@ char *dynamic_buffer(char *preallocated, size_t required, char **store) {
 
 /** Free the Buffer which contains string. */
 void free_buffer(char *string) {
-    void * const buffer = string - sizeof(size_t);
+    void * const buffer = string - STRING_OFFSET;
     Sodium::sodium_free(buffer);
 }
 
