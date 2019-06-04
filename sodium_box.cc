@@ -157,6 +157,7 @@ MYSQL_STRING_FUNCTION(sodium_box_open,
 /* sodium_box_pk(keyPair) RETURNS BINARY STRING */
 /* ALIAS sodium_box_publickey(keyPair) RETURNS BINARY STRING */
 SUBSTRING_FUNCTION(sodium_box_pk,
+    keyPair, MYSQL_BINARY_STRING,
     0, crypto_box_PUBLICKEYBYTES,
     crypto_box_PUBLICKEYBYTES,
     crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES + 1
