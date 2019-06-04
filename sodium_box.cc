@@ -4,17 +4,18 @@
 MYSQL_STRING_FUNCTION(sodium_box,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     REQUIRE_ARGS(4);
     REQUIRE_STRING(0, message);
     REQUIRE_STRING(1, nonce);
     REQUIRE_STRING(2, publicKey);
     REQUIRE_STRING(3, secretKey);
-
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    const char *const message = args->args[0];
-    size_t messageLength = args->lengths[0];
+    const char *const   message = args->args[0];
+    const size_t        messageLength = args->lengths[0];
     if (message == NULL) {
         return_MYSQL_NULL(NULL);
     }
@@ -49,21 +50,50 @@ MYSQL_STRING_FUNCTION(sodium_box,
 });
 
 
-/** sodium_box_keypair() RETURNS STRING */
+/** sodium_box_keypair() RETURNS BINARY STRING
+ *
+ *  sodium_box_keypair(seed) RETURNS BINARY STRING
+ *
+ * @CREATE FUNCTION sodium_box_keypair() RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_box_keypair,
 {
     // init
-    REQUIRE_ARGS(0);
-
+    initid->maybe_null = 1;
     initid->max_length = MYSQL_BINARY_STRING;
+
+    switch (args->arg_count) {
+        case 0:
+            break;
+        case 1:
+            REQUIRE_STRING(0, seed);
+            break;
+        default:
+            strcpy(message, "0-1 arguments required");
+            return 1;
+    }
 }, {
     // main
-    result = fixed_buffer(result, crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES);
+    result = fixed_buffer(result, crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES + 1);
+    result[crypto_box_PUBLICKEYBYTES] = BOUNDARY;
 
-    MUST_SUCCEED(Sodium::crypto_box_keypair(
-        (unsigned char*)result,
-        (unsigned char*)result + crypto_box_PUBLICKEYBYTES
-    ));
+    if (args->arg_count) {
+        const char *const seed = args->args[0];
+        if (args->lengths[0] != crypto_box_SEEDBYTES) {
+            return_MYSQL_NULL(NULL);
+        }
+
+        MUST_SUCCEED(Sodium::crypto_box_seed_keypair(
+            (unsigned char*)result,
+            (unsigned char*)result + crypto_box_PUBLICKEYBYTES + 1,
+            (unsigned char*)seed
+        ));
+    } else {
+        MUST_SUCCEED(Sodium::crypto_box_keypair(
+            (unsigned char*)result,
+            (unsigned char*)result + crypto_box_PUBLICKEYBYTES + 1
+        ));
+    }
 
     return result;
 }, {
@@ -76,17 +106,18 @@ MYSQL_STRING_FUNCTION(sodium_box_keypair,
 MYSQL_STRING_FUNCTION(sodium_box_open,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     REQUIRE_ARGS(4);
     REQUIRE_STRING(0, cipher);
     REQUIRE_STRING(1, nonce);
     REQUIRE_STRING(2, publicKey);
     REQUIRE_STRING(3, secretKey);
-
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    const char *const cipher = args->args[0];
-    size_t cipherLength = args->lengths[0];
+    const char *const   cipher = args->args[0];
+    const size_t        cipherLength = args->lengths[0];
     if (cipher == NULL) {
         return_MYSQL_NULL(NULL);
     }
@@ -126,9 +157,9 @@ MYSQL_STRING_FUNCTION(sodium_box_open,
 /* sodium_box_pk(keyPair) RETURNS BINARY STRING */
 /* ALIAS sodium_box_publickey(keyPair) RETURNS BINARY STRING */
 SUBSTRING_FUNCTION(sodium_box_pk,
-    keyPair, MYSQL_BINARY_STRING,
     0, crypto_box_PUBLICKEYBYTES,
-    crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES
+    crypto_box_PUBLICKEYBYTES,
+    crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES + 1
 );
 
 UDF_STRING_ALIAS(sodium_box_publickey, sodium_box_pk);
@@ -138,13 +169,15 @@ UDF_STRING_ALIAS(sodium_box_publickey, sodium_box_pk);
 MYSQL_STRING_FUNCTION(sodium_box_sk2pk,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     REQUIRE_ARGS(1);
     REQUIRE_STRING(0, secretKey);
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    const char *secretKey = args->args[0];
-    size_t      secretKeyLength = args->lengths[0];
+    const char *    secretKey = args->args[0];
+    const size_t    secretKeyLength = args->lengths[0];
 
     if (secretKeyLength != crypto_box_SECRETKEYBYTES) {
         return_MYSQL_NULL(NULL);
@@ -167,15 +200,16 @@ UDF_STRING_ALIAS(sodium_box_publickey_from_secretkey, sodium_box_sk2pk);
 MYSQL_STRING_FUNCTION(sodium_box_seal,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     REQUIRE_ARGS(2);
     REQUIRE_STRING(0, message);
     REQUIRE_STRING(1, publicKey);
-
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    const char *const message = args->args[0];
-    size_t messageLength = args->lengths[0];
+    const char *const   message = args->args[0];
+    const size_t        messageLength = args->lengths[0];
     if (message == NULL) {
         return_MYSQL_NULL(NULL);
     }
@@ -204,26 +238,27 @@ MYSQL_STRING_FUNCTION(sodium_box_seal,
 MYSQL_STRING_FUNCTION(sodium_box_seal_open,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     REQUIRE_ARGS(3);
     REQUIRE_STRING(0, cipher);
     REQUIRE_STRING(1, publicKey);
     REQUIRE_STRING(2, secretKey);
-
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    const char *const cipher = args->args[0];
-    size_t cipherLength = args->lengths[0];
+    const char *const   cipher = args->args[0];
+    const size_t        cipherLength = args->lengths[0];
     if (cipher == NULL) {
         return_MYSQL_NULL(NULL);
     }
 
-    const char *const publicKey = args->args[1];
+    const char *const   publicKey = args->args[1];
     if (args->lengths[1] != crypto_box_PUBLICKEYBYTES) {
         return_MYSQL_NULL(NULL);
     }
 
-    const char *const secretKey = args->args[2];
+    const char *const   secretKey = args->args[2];
     if (args->lengths[2] != crypto_box_SECRETKEYBYTES) {
         return_MYSQL_NULL(NULL);
     }
@@ -248,39 +283,10 @@ MYSQL_STRING_FUNCTION(sodium_box_seal_open,
 /* ALIAS sodium_box_secretkey(keyPair) RETURNS STRING */
 SUBSTRING_FUNCTION(sodium_box_sk,
     keyPair, MYSQL_BINARY_STRING,
-    crypto_box_PUBLICKEYBYTES, crypto_box_SECRETKEYBYTES,
-    crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES
+    crypto_box_PUBLICKEYBYTES + 1, crypto_box_SECRETKEYBYTES,
+    crypto_box_PUBLICKEYBYTES,
+    crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES + 1
 );
 
 UDF_STRING_ALIAS(sodium_box_secretkey, sodium_box_sk);
-
-
-/* sodium_box_seed_keypair(seed) RETURNS BINARY STRING */
-MYSQL_STRING_FUNCTION(sodium_box_seed_keypair,
-{
-    // init
-    REQUIRE_ARGS(1);
-    REQUIRE_STRING(0, seed);
-
-    initid->max_length = MYSQL_BINARY_STRING;
-}, {
-    // main
-    char *const seed = args->args[0];
-    if (args->lengths[0] != crypto_box_SEEDBYTES) {
-        return_MYSQL_NULL(NULL);
-    }
-
-    result = fixed_buffer(result, crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES);
-
-    MUST_SUCCEED(Sodium::crypto_box_seed_keypair(
-        (unsigned char*)result,
-        (unsigned char*)result + crypto_box_PUBLICKEYBYTES,
-        (unsigned char*)seed
-    ));
-
-    return result;
-}, {
-    // deinit
-    if (initid->ptr != NULL) free_buffer(initid->ptr);
-});
 

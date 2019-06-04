@@ -12,13 +12,13 @@ MYSQL_STRING_FUNCTION(sodium_sign,
     initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    long long               detached = *(long long*)(args->args[0]);
+    const long long     detached = *(long long*)(args->args[0]);
 
-    const char             *message = args->args[1];
-    size_t                  messageLength = args->lengths[1];
+    const char *const   message = args->args[1];
+    const size_t        messageLength = args->lengths[1];
 
-    const char             *secretKey = args->args[2];
-    size_t                  secretKeyLength = args->lengths[2];
+    const char *const   secretKey = args->args[2];
+    const size_t        secretKeyLength = args->lengths[2];
 
     if (message == NULL || secretKeyLength != crypto_sign_SECRETKEYBYTES) {
         return_MYSQL_NULL(NULL);
@@ -27,11 +27,19 @@ MYSQL_STRING_FUNCTION(sodium_sign,
     if (detached == 0) {
         result = fixed_buffer(result, messageLength + crypto_sign_BYTES);
 
-        MUST_SUCCEED(Sodium::crypto_sign((unsigned char*)result, NULL, (unsigned char*)message, messageLength, (unsigned char*)secretKey));
+        MUST_SUCCEED(Sodium::crypto_sign(
+            (unsigned char*)result, NULL,
+            (unsigned char*)message, messageLength,
+            (unsigned char*)secretKey)
+        );
     } else {
         result = fixed_buffer(result, crypto_sign_BYTES);
 
-        MUST_SUCCEED(Sodium::crypto_sign_detached((unsigned char*)result, NULL, (unsigned char*)message, messageLength, (unsigned char*)secretKey));
+        MUST_SUCCEED(Sodium::crypto_sign_detached(
+            (unsigned char*)result, NULL,
+            (unsigned char*)message, messageLength,
+            (unsigned char*)secretKey)
+        );
     }
 
     return result;
@@ -59,7 +67,8 @@ MYSQL_STRING_FUNCTION(sodium_sign_keypair,
     initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    result = fixed_buffer(result, crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES);
+    result = fixed_buffer(result, crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES + 1);
+    result[crypto_sign_PUBLICKEYBYTES] = BOUNDARY;
 
     if (args->arg_count) {
         // sodium_sign_keypair(seed)
@@ -70,10 +79,17 @@ MYSQL_STRING_FUNCTION(sodium_sign_keypair,
             return_MYSQL_NULL(NULL);
         }
 
-        MUST_SUCCEED(Sodium::crypto_sign_seed_keypair((unsigned char*)result, (unsigned char*)result + crypto_sign_PUBLICKEYBYTES, (unsigned char*)seed));
+        MUST_SUCCEED(Sodium::crypto_sign_seed_keypair(
+            (unsigned char*)result,
+            (unsigned char*)result + crypto_sign_PUBLICKEYBYTES + 1,
+            (unsigned char*)seed
+        ));
     } else {
         // sodium_sign_keypair()
-        MUST_SUCCEED(Sodium::crypto_sign_keypair((unsigned char*)result, (unsigned char*)result + crypto_sign_PUBLICKEYBYTES));
+        MUST_SUCCEED(Sodium::crypto_sign_keypair(
+            (unsigned char*)result,
+            (unsigned char*)result + crypto_sign_PUBLICKEYBYTES + 1
+        ));
     }
     return result;
 }, {
@@ -95,11 +111,11 @@ MYSQL_STRING_FUNCTION(sodium_sign_open,
     initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    const char             *signedMessage = args->args[0];
-    size_t                  signedMessageLength = args->lengths[0];
+    const char *const   signedMessage = args->args[0];
+    const size_t        signedMessageLength = args->lengths[0];
 
-    const char             *publicKey = args->args[1];
-    size_t                  publicKeyLength = args->lengths[1];
+    const char *const   publicKey = args->args[1];
+    const size_t        publicKeyLength = args->lengths[1];
 
     if (signedMessage == NULL || publicKeyLength != crypto_sign_PUBLICKEYBYTES) {
         return_MYSQL_NULL(NULL);
@@ -107,13 +123,17 @@ MYSQL_STRING_FUNCTION(sodium_sign_open,
 
     result = dynamic_buffer(result, signedMessageLength, &(initid->ptr));
 
-    unsigned long long messageLength;
+    unsigned long long resultLength;
 
-    if (Sodium::crypto_sign((unsigned char*)result, &messageLength, (unsigned char*)signedMessage, signedMessageLength, (unsigned char*)publicKey) != SUCCESS) {
+    if (Sodium::crypto_sign(
+        (unsigned char*)result, &resultLength,
+        (unsigned char*)signedMessage, signedMessageLength,
+        (unsigned char*)publicKey
+    ) != SUCCESS) {
         return_MYSQL_NULL(NULL);
     }
 
-    *length = (unsigned long)messageLength;
+    *length = (unsigned long)resultLength;
 
     return result;
 }, {
@@ -125,7 +145,13 @@ MYSQL_STRING_FUNCTION(sodium_sign_open,
 
 /* sodium_sign_pk(keyPair) RETURNS BINARY STRING */
 /* sodium_sign_publickey(keyPair) RETURNS BINARY STRING */
-SUBSTRING_FUNCTION(sodium_sign_pk, keyPair, MYSQL_BINARY_STRING, 0, crypto_sign_PUBLICKEYBYTES, crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES);
+SUBSTRING_FUNCTION(sodium_sign_pk,
+    keyPair,
+    MYSQL_BINARY_STRING,
+    0, crypto_sign_PUBLICKEYBYTES,
+    crypto_sign_PUBLICKEYBYTES,
+    crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES + 1
+);
 
 UDF_STRING_ALIAS(sodium_sign_publickey, sodium_sign_pk);
 
@@ -140,8 +166,8 @@ MYSQL_STRING_FUNCTION(sodium_sign_sk2pk,
     initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    const char *secretKey = args->args[0];
-    size_t      secretKeyLength = args->lengths[0];
+    const char * const  secretKey = args->args[0];
+    const size_t        secretKeyLength = args->lengths[0];
 
     if (secretKeyLength != crypto_sign_SECRETKEYBYTES) {
         return_MYSQL_NULL(NULL);
@@ -162,7 +188,13 @@ UDF_STRING_ALIAS(sodium_sign_publickey_from_secretkey, sodium_sign_sk2pk);
 
 /* sodium_sign_sk(keyPair) RETURNS BINARY STRING */
 /* sodium_sign_secretkey(keyPair) RETURNS BINARY STRING */
-SUBSTRING_FUNCTION(sodium_sign_sk, keyPair, MYSQL_BINARY_STRING, crypto_sign_PUBLICKEYBYTES, crypto_sign_SECRETKEYBYTES, crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES);
+SUBSTRING_FUNCTION(sodium_sign_sk,
+    keyPair,
+    MYSQL_BINARY_STRING,
+    crypto_sign_PUBLICKEYBYTES + 1, crypto_sign_SECRETKEYBYTES,
+    crypto_sign_PUBLICKEYBYTES,
+    crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES + 1
+);
 
 UDF_STRING_ALIAS(sodium_sign_secretkey, sodium_sign_sk);
 
@@ -188,13 +220,12 @@ MYSQL_INTEGER_FUNCTION(sodium_sign_verify,
     }
 }, {
     // main
-    const char             *signature;
-    size_t                  signatureLength;
-
-    const char             *message;
-    size_t                  messageLength;
-    const char             *publicKey;
-    size_t                  publicKeyLength;
+    const char *    signature;
+    size_t          signatureLength;
+    const char *    message;
+    size_t          messageLength;
+    const char *    publicKey;
+    size_t          publicKeyLength;
 
     if (args->arg_count >= 3) {
         // Syntax sodium_sign_verify(signature, message, publicKey)
@@ -223,11 +254,15 @@ MYSQL_INTEGER_FUNCTION(sodium_sign_verify,
     if (message == NULL
         || signatureLength != crypto_sign_BYTES
         || publicKeyLength != crypto_sign_PUBLICKEYBYTES
-     ) {
+    ) {
         return FAIL;
     }
 
-    return Sodium::crypto_sign_verify_detached((unsigned char*)signature, (unsigned char*)message, messageLength, (unsigned char*)publicKey);
+    return Sodium::crypto_sign_verify_detached(
+        (unsigned char*)signature,
+        (unsigned char*)message, messageLength,
+        (unsigned char*)publicKey
+    );
 }, {
     // deinit
 });

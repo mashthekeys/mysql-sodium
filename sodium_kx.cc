@@ -25,10 +25,11 @@ MYSQL_STRING_FUNCTION(sodium_kx_client_session_keys,
     const char *const clientSecretKey = args->args[1];
     const char *const serverPublicKey = args->args[2];
 
-    result = fixed_buffer(result, crypto_kx_SESSIONKEYBYTES * 2);
+    result = fixed_buffer(result, 1 + crypto_kx_SESSIONKEYBYTES * 2);
+    result[crypto_kx_SESSIONKEYBYTES] = BOUNDARY;
 
     MUST_SUCCEED(Sodium::crypto_kx_client_session_keys(
-        (unsigned char*)result, (unsigned char*)result + crypto_kx_SESSIONKEYBYTES,
+        (unsigned char*)result, (unsigned char*)result + crypto_kx_SESSIONKEYBYTES + 1,
         (unsigned char*)clientPublicKey, (unsigned char*)clientSecretKey, (unsigned char*)serverPublicKey
     ));
 
@@ -57,7 +58,8 @@ MYSQL_STRING_FUNCTION(sodium_kx_keypair,
     initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
-    result = fixed_buffer(result, crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES);
+    result = fixed_buffer(result, crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES + 1);
+    result[crypto_kx_PUBLICKEYBYTES] = BOUNDARY;
 
     if (args->arg_count) {
         // Syntax sodium_kx_keypair(seed)
@@ -68,14 +70,14 @@ MYSQL_STRING_FUNCTION(sodium_kx_keypair,
 
         MUST_SUCCEED(Sodium::crypto_kx_seed_keypair(
             (unsigned char*)result,
-            (unsigned char*)result + crypto_kx_PUBLICKEYBYTES,
+            (unsigned char*)result + crypto_kx_PUBLICKEYBYTES + 1,
             (unsigned char*)seed
         ));
     } else {
         // Syntax sodium_kx_keypair()
         MUST_SUCCEED(Sodium::crypto_kx_keypair(
             (unsigned char*)result,
-            (unsigned char*)result + crypto_kx_PUBLICKEYBYTES
+            (unsigned char*)result + crypto_kx_PUBLICKEYBYTES + 1
         ));
     }
     return result;
@@ -90,7 +92,8 @@ MYSQL_STRING_FUNCTION(sodium_kx_keypair,
 SUBSTRING_FUNCTION(sodium_kx_pk,
     keyPair, MYSQL_BINARY_STRING,
     0, crypto_kx_PUBLICKEYBYTES,
-    crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES
+    crypto_kx_PUBLICKEYBYTES,
+    crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES + 1
 );
 
 UDF_STRING_ALIAS(sodium_kx_publickey, sodium_kx_pk);
@@ -99,8 +102,9 @@ UDF_STRING_ALIAS(sodium_kx_publickey, sodium_kx_pk);
 /* ALIAS sodium_kx_secretkey(keyPair) RETURNS BINARY STRING */
 SUBSTRING_FUNCTION(sodium_kx_sk,
     keyPair, MYSQL_BINARY_STRING,
-    crypto_kx_PUBLICKEYBYTES, crypto_kx_SECRETKEYBYTES,
-    crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES
+    crypto_kx_PUBLICKEYBYTES + 1, crypto_kx_SECRETKEYBYTES,
+    crypto_kx_PUBLICKEYBYTES,
+    crypto_kx_PUBLICKEYBYTES + crypto_kx_SECRETKEYBYTES + 1
 );
 
 UDF_STRING_ALIAS(sodium_kx_secretkey, sodium_kx_sk);
@@ -132,10 +136,11 @@ MYSQL_STRING_FUNCTION(sodium_kx_server_session_keys,
     const char *const serverSecretKey = args->args[1];
     const char *const clientPublicKey = args->args[2];
 
-    result = fixed_buffer(result, crypto_kx_SESSIONKEYBYTES + crypto_kx_SESSIONKEYBYTES);
+    result = fixed_buffer(result, crypto_kx_SESSIONKEYBYTES + crypto_kx_SESSIONKEYBYTES + 1);
+    result[crypto_kx_SESSIONKEYBYTES] = BOUNDARY;
 
     MUST_SUCCEED(Sodium::crypto_kx_server_session_keys(
-        (unsigned char*)result, (unsigned char*)result + crypto_kx_SESSIONKEYBYTES,
+        (unsigned char*)result, (unsigned char*)result + crypto_kx_SESSIONKEYBYTES + 1,
         (unsigned char*)serverPublicKey, (unsigned char*)serverSecretKey, (unsigned char*)clientPublicKey
     ));
 
