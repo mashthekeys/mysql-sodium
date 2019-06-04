@@ -33,7 +33,7 @@ MYSQL_STRING_FUNCTION(block_pad,
 
     size_t paddedLength;
 
-    if (Sodium::sodium_pad(paddedLength, (unsigned char*)result, inputLength, blockSize, maxLength)
+    if (Sodium::sodium_pad(&paddedLength, (unsigned char*)result, inputLength, (size_t)blockSize, maxLength)
         != SUCCESS
     ) {
         return_MYSQL_NULL(NULL);
