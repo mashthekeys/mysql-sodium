@@ -34,6 +34,9 @@ void zeroWorkArea(GenericHashWorkArea *workArea) {
 
 
 bool group_generichash_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     switch (args->arg_count) {
         case 3: {
             // group_generichash(hashLength?, message, key)
@@ -53,14 +56,14 @@ bool group_generichash_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
         }
     }
 
-    size_t   hashLength = args->args[0] == NULL ? (size_t)crypto_generichash_BYTES : (size_t)(long long*)args->args[0];
+    size_t   hashLength = args->args[0] == NULL
+                ? (size_t)crypto_generichash_BYTES
+                : (size_t)(long long*)args->args[0];
 
     if ((hashLength < crypto_generichash_BYTES_MIN) && (hashLength > crypto_generichash_BYTES_MAX)) {
         // If hashLength is provided but invalid, output for the whole function is NULL
         hashLength = 0;
     }
-
-    initid->max_length = MYSQL_BINARY_STRING;
 
     initid->ptr = (char*)newWorkArea(hashLength);
 }
@@ -102,7 +105,12 @@ void group_generichash_add(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char
                     zeroWorkArea(workArea);
                     *is_null = 1;
                 }
-            } else if (Sodium::crypto_generichash_init(&(workArea->state), NULL, 0, workArea->props.hashLength) != SUCCESS) {
+            } else if (Sodium::crypto_generichash_init(
+                        &(workArea->state),
+                        NULL, 0,
+                        workArea->props.hashLength
+                    ) != SUCCESS
+            ) {
                 // group_generichash(hashLength?, message)
                 zeroWorkArea(workArea);
                 *is_null = 1;
@@ -120,14 +128,18 @@ void group_generichash_add(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char
         }
     }
 }
-/**
- * AGGREGATE FUNCTION GROUP_GENERICHASH(hashLength?, message, key?) RETURN BINARY STRING
- *      hashLength must be NULL or a constant INTEGER.
- *          If it is NULL, the default value is 32 (from crypto_generichash_BYTES)
+
+/** GROUP_GENERICHASH(hashLength?, message, key?) RETURNS VARBINARY
  *
- *      message can be any length.  Each group of messages outputs one hash.  If any message is NULL, the hash is NULL.
+ *  hashLength must be NULL or a constant INTEGER.
+ *  If it is NULL, the default value is 32 (from crypto_generichash_BYTES)
  *
- *      key is optional, but if supplied it MUST NOT be empty or NULL.
+ *  message can be any length.  Each group of messages outputs one hash.
+ *  If any message is NULL, the hash is NULL.
+ *
+ *  key is optional, but if supplied it MUST NOT be empty or NULL.
+ *
+ * @CREATE AGGREGATE FUNCTION group_generichash RETURNS STRING
  */
 char *group_generichash(UDF_INIT *initid, UDF_ARGS *args,
           char *result, unsigned long *length,
@@ -145,8 +157,10 @@ char *group_generichash(UDF_INIT *initid, UDF_ARGS *args,
         return NULL;
     }
 
-    if (Sodium::crypto_generichash_final(&(workArea->state), (unsigned char*)result, workArea->props.hashLength)
-        != SUCCESS
+    if (Sodium::crypto_generichash_final(
+            &(workArea->state),
+            (unsigned char*)result, workArea->props.hashLength
+        ) != SUCCESS
     ) {
         // If crypto_generichash_final fails, output is NULL for this group
         *is_null = 1;

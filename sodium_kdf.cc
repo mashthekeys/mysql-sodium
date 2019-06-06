@@ -1,17 +1,23 @@
 #include "sodium_udf.h"
 
-/* sodium_kdf(keyLength, subkeyID, context, masterKey) RETURNS BINARY STRING */
-/* sodium_kdf_derive_from_key(keyLength, subkeyID, context, masterKey) RETURNS BINARY STRING */
+/** SODIUM_KDF(keyLength, subkeyID, context, masterKey) RETURNS VARBINARY
+ *
+ *  Derive a subkey from an existing key.
+ *
+ * @CREATE FUNCTION sodium_kdf RETURNS STRING
+ * @ALIAS FUNCTION sodium_kdf_derive_from_key RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_kdf,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     REQUIRE_ARGS(4);
     REQUIRE_CONST_INTEGER(0, keyLength);
     REQUIRE_INTEGER(1, subkeyID);
     REQUIRE_STRING(2, context);
     REQUIRE_STRING(3, masterKey);
-
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
     const long long keyLength = *((long long *)args->args[0]);
@@ -52,7 +58,11 @@ MYSQL_STRING_FUNCTION(sodium_kdf,
 UDF_STRING_ALIAS(sodium_kdf_derive_from_key, sodium_kdf);
 
 
-/* sodium_kdf_keygen() RETURNS BINARY STRING */
+/** SODIUM_KDF_KEYGEN() RETURNS BINARY(crypto_kdf_KEYBYTES)
+ *
+ *  Randomly generate a key for SODIUM_KDF.
+ *
+ * @CREATE FUNCTION sodium_kdf_keygen RETURNS STRING */
 BUFFER_GENERATOR_FUNCTION(
     sodium_kdf_keygen,
     Sodium::crypto_kdf_keygen,

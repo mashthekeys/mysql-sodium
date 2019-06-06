@@ -1,15 +1,25 @@
 #include "sodium_udf.h"
 
-/* sodium_sign(detached, message, secretKey) RETURNS BINARY STRING */
+/** SODIUM_SIGN(detached, message, secretKey) RETURNS VARBINARY
+ *
+ *  Sign a message.  If detached is 0, only the message signiature is returned.
+ *
+ *  If detached is != 0, the message plain-text is appended to the signiature.
+ *
+ *  The secret key of the sender is needed.
+ *
+ * @CREATE FUNCTION sodium_sign RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_sign,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     REQUIRE_ARGS(3);
     REQUIRE_CONST_INTEGER(0, detached);
     REQUIRE_STRING(1, message);
     REQUIRE_STRING(2, secretKey);
-
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
     const long long     detached = *(long long*)(args->args[0]);
@@ -49,11 +59,22 @@ MYSQL_STRING_FUNCTION(sodium_sign,
 });
 
 
-/* sodium_sign_keypair() RETURNS BINARY STRING */
-/* sodium_sign_keypair(seed) RETURNS BINARY STRING */
+/** SODIUM_SIGN_KEYPAIR() RETURNS VARBINARY
+ *
+ *  Randomly generate a secret key and a corresponding public key
+ *
+ *  SODIUM_SIGN_KEYPAIR(seed) RETURNS VARBINARY
+ *
+ *  Deterministically derive secret and public keys from a seed
+ *
+ * @CREATE FUNCTION sodium_sign_keypair RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_sign_keypair,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     switch (args->arg_count) {
         case 0:
             break;
@@ -64,7 +85,6 @@ MYSQL_STRING_FUNCTION(sodium_sign_keypair,
             strcpy(message, "0-1 arguments required");
             return 1;
     }
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
     result = fixed_buffer(result, crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES + 1);
@@ -100,15 +120,23 @@ MYSQL_STRING_FUNCTION(sodium_sign_keypair,
 
 
 
-/* sodium_sign_open(signedMessage, publicKey) RETURNS BINARY STRING */
+/** SODIUM_SIGN_OPEN(signedMessage, publicKey) RETURNS VARBINARY
+ *
+ *  Get the content of a signed message, or NULL if invalid.
+ *
+ *  Only the public key of the sender is needed.
+ *
+ * @CREATE FUNCTION sodium_sign_open RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_sign_open,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     REQUIRE_ARGS(2);
     REQUIRE_STRING(0, signedMessage);
     REQUIRE_STRING(1, publicKey);
-
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
     const char *const   signedMessage = args->args[0];
@@ -143,8 +171,13 @@ MYSQL_STRING_FUNCTION(sodium_sign_open,
 
 
 
-/* sodium_sign_pk(keyPair) RETURNS BINARY STRING */
-/* sodium_sign_publickey(keyPair) RETURNS BINARY STRING */
+/** SODIUM_SIGN_PK(keyPair) RETURNS BINARY(crypto_sign_PUBLICKEYBYTES)
+ *
+ *  Extract public key from a keypair.
+ *
+ * @CREATE FUNCTION sodium_sign_pk RETURNS STRING
+ * @ALIAS FUNCTION sodium_sign_publickey RETURNS STRING
+ */
 SUBSTRING_FUNCTION(sodium_sign_pk,
     keyPair,
     MYSQL_BINARY_STRING,
@@ -156,14 +189,21 @@ SUBSTRING_FUNCTION(sodium_sign_pk,
 UDF_STRING_ALIAS(sodium_sign_publickey, sodium_sign_pk);
 
 
-/* sodium_sign_sk2pk(secretKey) RETURNS BINARY STRING */
-/* sodium_sign_publickey_from_secretkey(secretKey) RETURNS BINARY STRING */
+/** SODIUM_SIGN_SK2PK(secretKey) RETURNS BINARY(crypto_sign_PUBLICKEYBYTES)
+ *
+ *  Compute public key from secret key.
+ *
+ * @CREATE FUNCTION sodium_sign_sk2pk RETURNS STRING
+ * @ALIAS FUNCTION sodium_sign_publickey_from_secretkey RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_sign_sk2pk,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     REQUIRE_ARGS(1);
     REQUIRE_STRING(0, secretKey);
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
     const char * const  secretKey = args->args[0];
@@ -186,8 +226,13 @@ MYSQL_STRING_FUNCTION(sodium_sign_sk2pk,
 UDF_STRING_ALIAS(sodium_sign_publickey_from_secretkey, sodium_sign_sk2pk);
 
 
-/* sodium_sign_sk(keyPair) RETURNS BINARY STRING */
-/* sodium_sign_secretkey(keyPair) RETURNS BINARY STRING */
+/** SODIUM_SIGN_SK(keyPair) RETURNS BINARY(crypto_sign_SECRETKEYBYTES)
+ *
+ *  Extract secret key from a keypair.
+ *
+ * @CREATE FUNCTION sodium_sign_sk RETURNS STRING
+ * @ALIAS FUNCTION sodium_sign_secretkey RETURNS STRING
+ */
 SUBSTRING_FUNCTION(sodium_sign_sk,
     keyPair,
     MYSQL_BINARY_STRING,
@@ -199,8 +244,16 @@ SUBSTRING_FUNCTION(sodium_sign_sk,
 UDF_STRING_ALIAS(sodium_sign_secretkey, sodium_sign_sk);
 
 
-/* sodium_sign_verify(signedMessage, publicKey) RETURNS INTEGER */
-/* sodium_sign_verify(signature, message, publicKey) RETURNS INTEGER */
+/** SODIUM_SIGN_VERIFY(signedMessage, publicKey) RETURNS INTEGER
+ *
+ *  Verify a signed message.  Returns 0 for Valid and -1 for Invalid.
+ *
+ *  SODIUM_SIGN_VERIFY(signature, message, publicKey) RETURNS INTEGER
+ *
+ *  Verify signature for the message.  Returns 0 for Valid and -1 for Invalid.
+ *
+ * @CREATE FUNCTION sodium_sign_verify RETURNS INTEGER
+ */
 MYSQL_INTEGER_FUNCTION(sodium_sign_verify,
 {
     // init
