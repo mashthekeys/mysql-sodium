@@ -56,13 +56,23 @@ const security_level *pwhash_security_preset(const char* securityLevel, size_t s
     return matching_level;
 }
 
-/** sodium_pwhash(hashLength, password, salt, securityLevel) RETURNS BINARY STRING
- *  sodium_pwhash(hashLength, password, salt, operationLimit, memoryLimit) RETURNS BINARY STRING
+/** SODIUM_PWHASH(hashLength, password, salt, securityLevel) RETURNS VARBINARY
+ *
+ *  Derive a key from a password.  securityLevel must be one of the string constants
+ *  'INTERACTIVE', 'MODERATE', 'SENSITIVE', 'MAX', or 'MIN'.
+ *
+ *  sodium_pwhash(hashLength, password, salt, operationLimit, memoryLimit) RETURNS VARBINARY
+ *
+ *  Derive a key from a password.  operationLimit and memoryLimit must be integers.
+ *
  * @CREATE FUNCTION sodium_pwhash() RETURNS STRING
  */
 MYSQL_STRING_FUNCTION(sodium_pwhash,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     REQUIRE_CONST_INTEGER(0, hashLength);
     const long long hashLength = *((long long *)args->args[0]);
     if (hashLength < crypto_pwhash_BYTES_MIN) {
@@ -123,8 +133,6 @@ MYSQL_STRING_FUNCTION(sodium_pwhash,
             return 1;
         }
     }
-
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
     const long long hashLength = *((long long *)args->args[0]);
@@ -180,16 +188,20 @@ MYSQL_STRING_FUNCTION(sodium_pwhash,
 });
 
 
-/** sodium_pw_memory(securityLevel) RETURNS INTEGER */
+/** SODIUM_PW_MEMORY(securityLevel) RETURNS INTEGER
+ *
+ *  Get the value of the memory limit parameter for a given SODIUM_PW security level,
+ *  which must be 'INTERACTIVE', 'MODERATE', 'SENSITIVE', 'MAX', or 'MIN'.
+ *
+ * @CREATE FUNCTION sodium_pw_memory() RETURNS INTEGER */
 MYSQL_INTEGER_FUNCTION(sodium_pw_memory,
 {
     // init
+    initid->maybe_null = 1;
+
     REQUIRE_CONST_STRING(0, securityLevel);
 
     initid->ptr = (char*)pwhash_security_preset(args->args[0], args->lengths[0]);
-
-    initid->maybe_null = 1;
-
 }, {
     // main
     const security_level* ptr = (const security_level*)(initid->ptr);
@@ -205,16 +217,20 @@ MYSQL_INTEGER_FUNCTION(sodium_pw_memory,
 );
 
 
-/** sodium_pw_operations(securityLevel) RETURNS INTEGER */
+/** SODIUM_PW_OPERATIONS(securityLevel) RETURNS INTEGER
+ *
+ *  Get the value of the operation limit parameter for a given SODIUM_PW security level,
+ *  which must be 'INTERACTIVE', 'MODERATE', 'SENSITIVE', 'MAX', or 'MIN'.
+ *
+ * @CREATE FUNCTION sodium_pw_operations() RETURNS INTEGER */
 MYSQL_INTEGER_FUNCTION(sodium_pw_operations,
 {
     // init
+    initid->maybe_null = 1;
+
     REQUIRE_CONST_STRING(0, securityLevel);
 
     initid->ptr = (char*)pwhash_security_preset(args->args[0], args->lengths[0]);
-
-    initid->maybe_null = 1;
-
 }, {
     // main
     const security_level* ptr = (const security_level*)(initid->ptr);
@@ -234,17 +250,27 @@ MYSQL_INTEGER_FUNCTION(sodium_pw_operations,
     #error "crypto_pwhash_STRBYTES is too large"
 #endif
 
-/** sodium_pw(message, memoryLimit, operationLimit) RETURNS BINARY STRING
+/** SODIUM_PW(hashLength, password, salt, securityLevel)
+ *  RETURNS VARCHAR(crypto_pwhash_STRBYTES) CHARACTER SET ascii COLLATE ascii_bin
  *
- *  sodium_pw(message, securityLevel) RETURNS BINARY STRING
- *      securityLevel must be 'INTERACTIVE', 'MODERATE', 'SENSITIVE', 'MAX', or 'MIN'
+ *  Derive a self-contained salted ASCII hash from a password.
+ *  securityLevel must be one of the string constants
+ *  'INTERACTIVE', 'MODERATE', 'SENSITIVE', 'MAX', or 'MIN'.
+ *
+ *  SODIUM_PW(hashLength, password, salt, operationLimit, memoryLimit)
+ *  RETURNS VARCHAR(crypto_pwhash_STRBYTES) CHARACTER SET ascii COLLATE ascii_bin
+ *
+ *  Derive a self-contained salted ASCII hash from a password.
+ *  operationLimit and memoryLimit must be integers.
  *
  * @CREATE FUNCTION sodium_pw() RETURNS STRING
- *
- * @ALIAS sodium_pwhash_str
+ * @ALIAS FUNCTION sodium_pwhash_str() RETURNS STRING
  */
 MYSQL_STRING_FUNCTION(sodium_pw,
 { // init:
+    initid->maybe_null = 1;
+    initid->max_length = crypto_pwhash_STRBYTES;
+
     REQUIRE_STRING(0, password);
 
     if (args->arg_count == 2) {
@@ -279,9 +305,6 @@ MYSQL_STRING_FUNCTION(sodium_pw,
         strcpy(message, "2-3 arguments required");
         return 1;
     }
-
-    initid->maybe_null = 1;
-    initid->max_length = crypto_pwhash_STRBYTES;
 
     return 0;
 },
@@ -333,14 +356,22 @@ MYSQL_STRING_FUNCTION(sodium_pw,
 UDF_STRING_ALIAS(sodium_pwhash_str, sodium_pw);
 
 
-/** sodium_pw_outdated(hashStr, operationLimit, memoryLimit) RETURNS INTEGER
+/** SODIUM_PW_OUTDATED(hashStr, securityLevel) RETURNS INTEGER
  *
- * sodium_pw_outdated(hashStr, securityLevel) RETURNS INTEGER
- *      securityLevel must be 'INTERACTIVE', 'MODERATE', 'SENSITIVE', 'MAX', or 'MIN'
+ *  Determine whether a stored salted hash meets security parameters.
+ *  securityLevel must be 'INTERACTIVE', 'MODERATE', 'SENSITIVE', 'MAX', or 'MIN'
+ *
+ *  SODIUM_PW_OUTDATED(hashStr, operationLimit, memoryLimit) RETURNS INTEGER
+ *
+ *  Determine whether a stored salted hash meets security parameters.
+ *  operationLimit and memoryLimit must be integers.
+ *
+ *  Returns 0 for valid hashes which meet the security parameterrs.
+ *  Returns 1 for valid hashes which DO NOT meet the security parameterrs.
+ *  Returns -1 for invalid hashes and other errors.
  *
  * @CREATE FUNCTION sodium_pw_outdated() RETURNS INTEGER
- *
- * @ALIAS sodium_pwhash_str_needs_rehash
+ * @ALIAS FUNCTION sodium_pwhash_str_needs_rehash() RETURNS INTEGER
  */
 MYSQL_INTEGER_FUNCTION(sodium_pw_outdated,
 {
@@ -387,7 +418,7 @@ MYSQL_INTEGER_FUNCTION(sodium_pw_outdated,
     const size_t            hashStrLength = args->lengths[0];
 
     if (hashStr == NULL || hashStrLength != crypto_pwhash_STRBYTES) {
-        return_MYSQL_NULL(FAIL);
+        return FAIL;
     }
 
     size_t                  memlimit;
@@ -422,11 +453,14 @@ MYSQL_INTEGER_FUNCTION(sodium_pw_outdated,
 UDF_INTEGER_ALIAS(sodium_pwhash_str_needs_rehash, sodium_pw_outdated);
 
 
-/** sodium_pw_verify(hashStr, password) RETURNS INTEGER
+/** SODIUM_PW_VERIFY(hashStr, password) RETURNS INTEGER
+ *
+ *  Verifies that a password matches a hash.
+ *
+ *  Returns 0 if the match is successful, or non-zero on error.
  *
  * @CREATE FUNCTION sodium_pw_verify() RETURNS INTEGER
- *
- * @ALIAS sodium_pwhash_str_verify
+ * @ALIAS FUNCRTION sodium_pwhash_str_verify() RETURNS INTEGER
  */
 MYSQL_INTEGER_FUNCTION(sodium_pw_verify,
 {

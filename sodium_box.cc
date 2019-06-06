@@ -1,6 +1,14 @@
 #include "sodium_udf.h"
 
-/** sodium_box(message, nonce, publicKey, secretKey) RETURNS STRING */
+/** SODIUM_BOX(message, nonce, publicKey, secretKey) RETURNS VARBINARY
+ *
+ *  Encrypt a message using public-key encryption.
+ *
+ *  The public key of the recipient is used to encrypt the message
+ *  and the secret key of the sender is used to sign it.
+ *
+ * @CREATE FUNCTION sodium_box() RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_box,
 {
     // init
@@ -50,9 +58,13 @@ MYSQL_STRING_FUNCTION(sodium_box,
 });
 
 
-/** sodium_box_keypair() RETURNS BINARY STRING
+/** SODIUM_BOX_KEYPAIR() RETURNS BINARY
  *
- *  sodium_box_keypair(seed) RETURNS BINARY STRING
+ *  Randomly generate a secret key and a corresponding public key.
+ *
+ *  SODIUM_BOX_KEYPAIR(seed) RETURNS BINARY
+ *
+ *  Deterministically derive the key pair from a seed.
  *
  * @CREATE FUNCTION sodium_box_keypair() RETURNS STRING
  */
@@ -102,7 +114,15 @@ MYSQL_STRING_FUNCTION(sodium_box_keypair,
 });
 
 
-/** sodium_box_open(cipher, nonce, publicKey, secretKey) RETURNS STRING */
+/** SODIUM_BOX_OPEN(cipher, nonce, publicKey, secretKey) RETURNS VARBINARY
+ *
+ *  Verify and decrypt a ciphertext.
+ *
+ *  The public key of the recipient is used to verify the message
+ *  and the secret key of the sender is used to decrypt it.
+ *
+ * @CREATE FUNCTION sodium_box_open() RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_box_open,
 {
     // init
@@ -154,8 +174,13 @@ MYSQL_STRING_FUNCTION(sodium_box_open,
 });
 
 
-/* sodium_box_pk(keyPair) RETURNS BINARY STRING */
-/* ALIAS sodium_box_publickey(keyPair) RETURNS BINARY STRING */
+/** SODIUM_BOX_PK(keyPair) RETURNS BINARY(crypto_box_PUBLICKEYBYTES)
+ *
+ *  Extract public key from a keypair.
+ *
+ * @CREATE FUNCTION sodium_box_pk() RETURNS STRING
+ * @ALIAS FUNCTION sodium_box_publickey() RETURNS STRING
+ */
 SUBSTRING_FUNCTION(sodium_box_pk,
     keyPair, MYSQL_BINARY_STRING,
     0, crypto_box_PUBLICKEYBYTES,
@@ -165,8 +190,14 @@ SUBSTRING_FUNCTION(sodium_box_pk,
 
 UDF_STRING_ALIAS(sodium_box_publickey, sodium_box_pk);
 
-/* sodium_box_sk2pk(secretKey) RETURNS BINARY STRING */
-/* ALIAS sodium_box_publickey_from_secretkey(secretKey) RETURNS BINARY STRING */
+
+/** SODIUM_BOX_SK2PK(secretKey) RETURNS BINARY(crypto_box_PUBLICKEYBYTES)
+ *
+ *  Compute public key from secret key.
+ *
+ * @CREATE FUNCTION sodium_box_sk2pk() RETURNS STRING
+ * @ALIAS FUNCTION sodium_box_publickey_from_secretkey() RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_box_sk2pk,
 {
     // init
@@ -197,7 +228,15 @@ MYSQL_STRING_FUNCTION(sodium_box_sk2pk,
 UDF_STRING_ALIAS(sodium_box_publickey_from_secretkey, sodium_box_sk2pk);
 
 
-/** sodium_box_seal(message, publicKey) RETURNS STRING */
+/** SODIUM_BOX_SEAL(message, publicKey) RETURNS VARBINARY
+ *
+ *  Encrypt a message using public-key encryption.
+ *
+ *  The public key of the recipient is used along with a ephemeral key
+ *  to encrypt the message.
+ *
+ * @CREATE FUNCTION sodium_box_seal() RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_box_seal,
 {
     // init
@@ -235,17 +274,41 @@ MYSQL_STRING_FUNCTION(sodium_box_seal,
 });
 
 
-/** sodium_box_seal_open(cipher, publicKey, secretKey) RETURNS STRING */
+/** SODIUM_BOX_SEAL_OPEN(cipher, keyPair) RETURNS VARBINARY
+ *
+ *  Decrypt a ciphertext.
+ *
+ *  SODIUM_BOX_SEAL_OPEN(cipher, publicKey, secretKey) RETURNS VARBINARY
+ *
+ *  Decrypt a ciphertext.
+ *
+ *  The public and secret keys of the recipient are used to verify and
+ *  decrypt the message.
+ *
+ * @CREATE FUNCTION sodium_box_seal_open() RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_box_seal_open,
 {
     // init
     initid->maybe_null = 1;
     initid->max_length = MYSQL_BINARY_STRING;
 
-    REQUIRE_ARGS(3);
-    REQUIRE_STRING(0, cipher);
-    REQUIRE_STRING(1, publicKey);
-    REQUIRE_STRING(2, secretKey);
+    switch (args->arg_count) {
+        case 2: {
+            REQUIRE_STRING(0, cipher);
+            REQUIRE_STRING(1, keyPair);
+
+        } break;
+        case 3: {
+            REQUIRE_STRING(0, cipher);
+            REQUIRE_STRING(1, publicKey);
+            REQUIRE_STRING(2, secretKey);
+        } break;
+        default: {
+            strcpy(message, "2-3 arguments required");
+            return 1;
+        }
+    }
 }, {
     // main
     const char *const   cipher = args->args[0];
@@ -254,16 +317,31 @@ MYSQL_STRING_FUNCTION(sodium_box_seal_open,
         return_MYSQL_NULL(NULL);
     }
 
-    const char *const   publicKey = args->args[1];
-    if (args->lengths[1] != crypto_box_PUBLICKEYBYTES) {
-        return_MYSQL_NULL(NULL);
-    }
+    const char *        publicKey;
+    const char *        secretKey;
 
-    const char *const   secretKey = args->args[2];
-    if (args->lengths[2] != crypto_box_SECRETKEYBYTES) {
-        return_MYSQL_NULL(NULL);
-    }
+    if (args->arg_count > 2) {
+        publicKey = args->args[1];
+        if (args->lengths[1] != crypto_box_PUBLICKEYBYTES) {
+            return_MYSQL_NULL(NULL);
+        }
 
+        secretKey = args->args[2];
+        if (args->lengths[2] != crypto_box_SECRETKEYBYTES) {
+            return_MYSQL_NULL(NULL);
+        }
+    } else {
+        const size_t keyPairLength = (crypto_box_PUBLICKEYBYTES + crypto_box_SECRETKEYBYTES + 1);
+
+        if (args->lengths[1] != keyPairLength
+            || args->args[1][crypto_box_PUBLICKEYBYTES] != BOUNDARY
+        ) {
+            return_MYSQL_NULL(NULL);
+        }
+
+        publicKey = args->args[1];
+        secretKey = args->args[1] + crypto_box_PUBLICKEYBYTES + 1;
+    }
     result = fixed_buffer(result, cipherLength - crypto_box_SEALBYTES);
 
     MUST_SUCCEED(Sodium::crypto_box_seal_open(
@@ -280,8 +358,13 @@ MYSQL_STRING_FUNCTION(sodium_box_seal_open,
 });
 
 
-/* sodium_box_sk(keyPair) RETURNS STRING */
-/* ALIAS sodium_box_secretkey(keyPair) RETURNS STRING */
+/** sodium_box_sk(keyPair) RETURNS BINARY(crypto_box_SECRETKEYBYTES)
+ *
+ *  Extract secret key from a keypair.
+ *
+ * @CREATE FUNCTION sodium_box_sk() RETURNS STRING
+ * @ALIAS FUNCTION sodium_box_secretkey() RETURNS STRING
+ */
 SUBSTRING_FUNCTION(sodium_box_sk,
     keyPair, MYSQL_BINARY_STRING,
     crypto_box_PUBLICKEYBYTES + 1, crypto_box_SECRETKEYBYTES,

@@ -4,14 +4,21 @@
 #define MAX_PAD_LENGTH 1024
 
 
-/* block_pad(input) RETURNS BINARY STRING */
+/** BLOCK_PAD(input, blockSize) RETURNS VARBINARY
+ *
+ *  Pads input string to a multiple of blockSize bytes.
+ *
+ * @CREATE FUNCTION block_pad() RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(block_pad,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     REQUIRE_ARGS(2);
     args->arg_type[0] = STRING_RESULT;
     REQUIRE_INTEGER(1, blockSize);
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
     const char *    input = args->args[0];
@@ -33,8 +40,11 @@ MYSQL_STRING_FUNCTION(block_pad,
 
     size_t paddedLength;
 
-    if (Sodium::sodium_pad(&paddedLength, (unsigned char*)result, inputLength, (size_t)blockSize, maxLength)
-        != SUCCESS
+    if (Sodium::sodium_pad(
+            &paddedLength,
+            (unsigned char*)result, inputLength,
+            (size_t)blockSize, maxLength
+        ) != SUCCESS
     ) {
         return_MYSQL_NULL(NULL);
     }
@@ -48,14 +58,21 @@ MYSQL_STRING_FUNCTION(block_pad,
 });
 
 
-/* block_unpad() RETURNS BINARY STRING */
+/** BLOCK_UNPAD(input, blockSize) RETURNS VARBINARY
+ *
+ *  Unpads input prewviously padded to a multiple of blockSize bytes.
+ *
+ * @CREATE FUNCTION block_unpad() RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(block_unpad,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     REQUIRE_ARGS(2);
     args->arg_type[0] = STRING_RESULT;
     REQUIRE_INTEGER(1, blockSize);
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
     const char *    input = args->args[0];
@@ -75,7 +92,12 @@ MYSQL_STRING_FUNCTION(block_unpad,
 
     size_t resultLength;
 
-    if (Sodium::sodium_unpad(&resultLength, (unsigned char*)result, inputLength, blockSize) != SUCCESS) {
+    if (Sodium::sodium_unpad(
+            &resultLength,
+            (unsigned char*)result, inputLength,
+            blockSize
+        ) != SUCCESS
+    ) {
         return_MYSQL_NULL(NULL);
     }
 

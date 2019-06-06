@@ -1,9 +1,17 @@
 #include "sodium_udf.h"
 
-/* sodium_generichash(hashLength?, message, key?) RETURNS BINARY STRING */
+/** SODIUM_GENERICHASH(hashLength?, message, key?) RETURNS VARBINARY
+ *
+ *  Get a hash of the message
+ *
+ * @CREATE FUNCTION sodium_generichash() RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_generichash,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     switch (args->arg_count) {
         case 3: {
             // sodium_generichash(hashLength?, message, key)
@@ -21,8 +29,6 @@ MYSQL_STRING_FUNCTION(sodium_generichash,
             return 1;
         }
     }
-
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
     const long long hashLength = args->args[0] == NULL
@@ -62,7 +68,12 @@ MYSQL_STRING_FUNCTION(sodium_generichash,
 
 
 
-/* sodium_generichash_keygen() RETURNS BINARY STRING */
+/** SODIUM_GENERICHASH_KEYGEN() RETURNS BINARY(crypto_generichash_KEYBYTES)
+ *
+ *  Randomly generate a key for SODIUM_GENERICHASH and GROUP_GENERICHASH.
+ *
+ * @CREATE FUNCTION sodium_generichash_keygen() RETURNS STRING
+ */
 BUFFER_GENERATOR_FUNCTION(
     sodium_generichash_keygen,
     Sodium::crypto_generichash_keygen,
@@ -71,15 +82,21 @@ BUFFER_GENERATOR_FUNCTION(
 );
 
 
-/* sodium_shorthash(input, key) RETURNS BINARY STRING */
+/** SODIUM_SHORTHASH(input, key) RETURNS BINARY(crypto_shorthash_BYTES)
+ *
+ *  Compute a fixed-size fingerprint for short messages.
+ *
+ * @CREATE FUNCTION sodium_shorthash() RETURNS STRING
+ */
 MYSQL_STRING_FUNCTION(sodium_shorthash,
 {
     // init
+    initid->maybe_null = 1;
+    initid->max_length = MYSQL_BINARY_STRING;
+
     REQUIRE_ARGS(2);
     REQUIRE_STRING(0, input);
     REQUIRE_STRING(1, key);
-
-    initid->max_length = MYSQL_BINARY_STRING;
 }, {
     // main
     const char             *input = args->args[0];
@@ -107,7 +124,12 @@ MYSQL_STRING_FUNCTION(sodium_shorthash,
 });
 
 
-/* sodium_shorthash_keygen() RETURNS BINARY STRING */
+/** SODIUM_SHORTHASH_KEYGEN() RETURNS BINARY(crypto_shorthash_KEYBYTES)
+ *
+ *  Randomly generate a key for SODIUM_SHORTHASH.
+ *
+ * @CREATE FUNCTION sodium_shorthash_keygen() RETURNS STRING
+ */
 BUFFER_GENERATOR_FUNCTION(
     sodium_shorthash_keygen,
     Sodium::crypto_shorthash_keygen,
