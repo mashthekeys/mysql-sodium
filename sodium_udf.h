@@ -68,10 +68,9 @@ deinitFunctionBody ;
 #define SUBSTRING_FUNCTION(substr_udf, substr_field, substr_max_length, substr_offset, substr_length, boundary_pos, total_field_length) \
 MYSQL_STRING_FUNCTION(substr_udf, \
 { init: \
-    initid->maybe_null = 1; \
-    initid->max_length = (substr_max_length); \
     REQUIRE_ARGS(1); \
     REQUIRE_STRING(0, substr_field); \
+    initid->max_length = (substr_max_length); \
 }, \
 { main: \
     char *const substr_field = args->args[0]; \

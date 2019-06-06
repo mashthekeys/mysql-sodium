@@ -62,7 +62,7 @@ Goal: Provide UDFs for Mysql to implement support for LibSodium.
 — Randomly generate a secret key and a corresponding public key
 
 ✔︎ ``sodium_box_keypair(seed)`` 
-— Deterministically derive the key pair from a seed
+— Deterministically derive the key pair from a single key
 
 ✔︎ ``sodium_box_keypair_from_secretkey_and_publickey`` 
 – Should be replaced with CONCAT
@@ -78,7 +78,7 @@ Aliased to ``sodium_box_publickey``
 — Encrypt a message
 
 ✔︎ ``sodium_box_seal_open`` 
-— Decrypt a ciphertext
+— Decrypt the ciphertext
 
 ✔︎ ``sodium_box_sk``
 – Extract secret key from keypair. \
@@ -91,17 +91,16 @@ Aliased to ``sodium_box_secretkey``
 — Get a hash of the message
 
 ✔︎ ``sodium_kdf`` 
-— Derive a subkey from an existing key \
+— Derive a subkey \
 Aliased to ``sodium_kdf_derive_from_key``
 
 ✔︎ ``sodium_kx_client_session_keys``
-– Generate a client-side keypair for key exchange
 
 ✔︎ ``sodium_kx_keypair()``
-— Creates a new keypair for key exchange
+— Creates a new sodium keypair
 
 ✔︎ ``sodium_kx_keypair(seed)``
-— Deterministically computes a new keypair for key exchange
+— Deterministically creates a new sodium keypair
 
 ✔︎ ``sodium_kx_pk``
 – Extract public key from keypair. \
@@ -112,7 +111,6 @@ Aliased to ``sodium_kx_publickey``
 Aliased to ``sodium_kx_secretkey``
 
 ✔︎ ``sodium_kx_server_session_keys``
-– Generate a server-side keypair for key exchange
 
 ✔︎ ``sodium_pw``
 — Derive a self-contained salted ASCII hash from a password. \
@@ -145,7 +143,7 @@ Aliased to ``sodium_pwhash_str_verify``
 — Randomly generate a secret key and a corresponding public key
 
 ✔︎ ``sodium_sign_keypair(seed)``
-— Deterministically derive secret and public keys from a seed
+— Deterministically derive the key pair from a single key
 
 ✔︎ ``sodium_sign_open`` 
 — Get the content of a signed message, or NULL if invalid
